@@ -1,0 +1,26 @@
+### MODE ###
+mode = standard
+
+### OPERATION ###
+operation = search
+#operation = self-join
+#operation = join
+
+### INPUT ###
+query_file = data/test_input_R.csv
+input_file = data/test_input_S.csv
+query_id = 0
+max_lines = -1
+
+### FILE PARSING ###
+set_column = 2
+tokens_column = 3
+column_delimiter = ;
+token_delimiter = ,
+
+### OUTPUT ###
+return_counts = false
+output_file = out.txt
+
+### SIMILARITY ###
+sim_threshold = 0.8
