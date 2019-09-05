@@ -3,12 +3,12 @@ package eu.smartdatalake.simjoin.sets.alg;
 import java.util.ArrayList;
 import java.util.List;
 
-import eu.smartdatalake.simjoin.sets.transform.IntSetCollection;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TDoubleArrayList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
+import eu.smartdatalake.simjoin.sets.transform.IntSetCollection;
 
 public class ClosestPairs {
 
@@ -175,6 +175,12 @@ public class ClosestPairs {
 
 			while (i < prefixBound) {
 
+				// skip this token if not in the index
+				if (r[i] < 0 || r[i] >= idx.length || idx[r[i]].size() == 0) {
+					i++;
+					continue;
+				}
+				
 				// Calculate differences in length against the indexed items to determine the
 				// search order
 				diff_front = r.length - collection2.sets[idx[r[i]].get(0)].length;
