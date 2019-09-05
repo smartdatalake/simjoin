@@ -1,4 +1,4 @@
-package simjoin.sets.io;
+package eu.smartdatalake.simjoin.sets.io;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -9,13 +9,13 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import simjoin.sets.TokenSet;
-import simjoin.sets.TokenSetCollection;
+import eu.smartdatalake.simjoin.sets.TokenSet;
+import eu.smartdatalake.simjoin.sets.TokenSetCollection;
 
 public class TokenSetCollectionReader {
 
 	public TokenSetCollection importFromFile(String file, int colSetId, int colSetTokens, String colDelimiter,
-			String tokDelimiter, int maxLines) {
+			String tokDelimiter, int maxLines, boolean header) {
 		TokenSetCollection collection = new TokenSetCollection();
 		List<TokenSet> sets = new ArrayList<TokenSet>();
 
@@ -25,6 +25,12 @@ public class TokenSetCollectionReader {
 			String line;
 			String[] columns;
 			TokenSet set;
+
+			// if the file has header, ignore the first line
+			if (header) {
+				br.readLine();
+			}
+			
 			while ((line = br.readLine()) != null) {
 				if (maxLines > 0 && lineCount >= maxLines) {
 					break;

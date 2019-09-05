@@ -1,4 +1,4 @@
-package simjoin.sets.alg;
+package eu.smartdatalake.simjoin.sets.alg;
 
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
@@ -28,7 +28,7 @@ public class Verification {
 		return olap >= minOverlap;
 	}
 
-	public double verifyWithScore(int[] r, int[] s, int eqoverlap) {
+	public double verifyWithScore(int[] r, int[] s) {
 
 		int olap, pr, ps, maxr, maxs;
 
@@ -51,8 +51,6 @@ public class Verification {
 				ps++;
 				maxs--;
 			}
-
-//			System.out.println("eqoverlap: " + eqoverlap + " olap: " + olap + " maxr: " + maxr + " maxs:" + maxs);
 		}
 
 		return (double) (olap / (1.0 * (r.length + s.length - olap)));

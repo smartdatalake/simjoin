@@ -1,4 +1,4 @@
-package simjoin.sets.alg;
+package eu.smartdatalake.simjoin.sets.alg;
 
 import gnu.trove.list.TDoubleList;
 import gnu.trove.list.TIntList;

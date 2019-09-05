@@ -1,4 +1,4 @@
-package simjoin.sets.transform;
+package eu.smartdatalake.simjoin.sets.transform;
 
 import java.util.Arrays;
 

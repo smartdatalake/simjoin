@@ -1,15 +1,15 @@
-package simjoin;
+package eu.smartdatalake.simjoin;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
 
-import simjoin.sets.JoinResult;
-import simjoin.sets.SetSimJoinImpl;
-import simjoin.sets.TokenSet;
-import simjoin.sets.TokenSetCollection;
-import simjoin.sets.io.TokenSetCollectionReader;
-import simjoin.sets.io.ResultsWriter;
+import eu.smartdatalake.simjoin.sets.JoinResult;
+import eu.smartdatalake.simjoin.sets.SetSimJoinImpl;
+import eu.smartdatalake.simjoin.sets.TokenSet;
+import eu.smartdatalake.simjoin.sets.TokenSetCollection;
+import eu.smartdatalake.simjoin.sets.io.ResultsWriter;
+import eu.smartdatalake.simjoin.sets.io.TokenSetCollectionReader;
 
 public class RunSimJoin {
 
@@ -42,6 +42,7 @@ public class RunSimJoin {
 			String tokenDelimiter = prop.getProperty("token_delimiter");
 			if (tokenDelimiter == null || tokenDelimiter.equals(""))
 				tokenDelimiter = " ";
+			boolean header = Boolean.parseBoolean(prop.getProperty("header"));
 
 			// output
 			boolean returnCounts = Boolean.parseBoolean(prop.getProperty("return_counts"));
@@ -50,13 +51,16 @@ public class RunSimJoin {
 			// similarity
 			double simThreshold = Double.parseDouble(prop.getProperty("sim_threshold"));
 
+			// top-k
+			int k = Integer.parseInt(prop.getProperty("k"));
+
 			/* EXECUTE THE OPERATION */
 
 			long duration;
-			JoinResult result;
-			ResultsWriter resultsWriter = new ResultsWriter();
 
 			if (mode.equalsIgnoreCase("standard")) {
+				JoinResult result;
+				ResultsWriter resultsWriter = new ResultsWriter();
 
 				TokenSetCollectionReader reader = new TokenSetCollectionReader();
 				SetSimJoinImpl ssjoin = new SetSimJoinImpl();
@@ -67,9 +71,9 @@ public class RunSimJoin {
 				case "search":
 					duration = System.nanoTime();
 					queryCollection = reader.importFromFile(queryFile, colSets, colTokens, columnDelimiter,
-							tokenDelimiter, maxLines);
+							tokenDelimiter, maxLines, header);
 					TokenSetCollection inputCollection = reader.importFromFile(inputFile, colSets, colTokens,
-							columnDelimiter, tokenDelimiter, maxLines);
+							columnDelimiter, tokenDelimiter, maxLines, header);
 					TokenSet querySet = queryCollection.sets[queryId];
 					duration = System.nanoTime() - duration;
 					System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
@@ -81,7 +85,7 @@ public class RunSimJoin {
 				case "self-join":
 					duration = System.nanoTime();
 					collection = reader.importFromFile(inputFile, colSets, colTokens, columnDelimiter, tokenDelimiter,
-							maxLines);
+							maxLines, header);
 					duration = System.nanoTime() - duration;
 					System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
 
@@ -92,13 +96,64 @@ public class RunSimJoin {
 				case "join":
 					duration = System.nanoTime();
 					queryCollection = reader.importFromFile(queryFile, colSets, colTokens, columnDelimiter,
-							tokenDelimiter, maxLines);
+							tokenDelimiter, maxLines, header);
 					collection = reader.importFromFile(inputFile, colSets, colTokens, columnDelimiter, tokenDelimiter,
-							maxLines);
+							maxLines, header);
 					duration = System.nanoTime() - duration;
 					System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
 
 					result = ssjoin.rangeJoin(queryCollection, collection, simThreshold, returnCounts);
+					resultsWriter.printJoinResults(result, outputFile);
+					break;
+
+				case "knn-search":
+					duration = System.nanoTime();
+					queryCollection = reader.importFromFile(queryFile, colSets, colTokens, columnDelimiter,
+							tokenDelimiter, maxLines, header);
+					inputCollection = reader.importFromFile(inputFile, colSets, colTokens, columnDelimiter,
+							tokenDelimiter, maxLines, header);
+					querySet = queryCollection.sets[queryId];
+					duration = System.nanoTime() - duration;
+					System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
+
+					result = ssjoin.knnSearch(querySet, inputCollection, k);
+					resultsWriter.printJoinResults(result, outputFile);
+					break;
+
+				case "knn-join":
+					duration = System.nanoTime();
+					queryCollection = reader.importFromFile(queryFile, colSets, colTokens, columnDelimiter,
+							tokenDelimiter, maxLines, header);
+					collection = reader.importFromFile(inputFile, colSets, colTokens, columnDelimiter, tokenDelimiter,
+							maxLines, header);
+					duration = System.nanoTime() - duration;
+					System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
+
+					result = ssjoin.knnJoin(queryCollection, collection, k);
+					resultsWriter.printJoinResults(result, outputFile);
+					break;
+
+				case "self-closest-pairs":
+					duration = System.nanoTime();
+					collection = reader.importFromFile(inputFile, colSets, colTokens, columnDelimiter, tokenDelimiter,
+							maxLines, header);
+					duration = System.nanoTime() - duration;
+					System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
+
+					result = ssjoin.closestPairsSelfJoin(collection, k);
+					resultsWriter.printJoinResults(result, outputFile);
+					break;
+
+				case "closest-pairs":
+					duration = System.nanoTime();
+					queryCollection = reader.importFromFile(queryFile, colSets, colTokens, columnDelimiter,
+							tokenDelimiter, maxLines, header);
+					collection = reader.importFromFile(inputFile, colSets, colTokens, columnDelimiter, tokenDelimiter,
+							maxLines, header);
+					duration = System.nanoTime() - duration;
+					System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
+
+					result = ssjoin.closestPairsJoin(queryCollection, collection, k);
 					resultsWriter.printJoinResults(result, outputFile);
 					break;
 

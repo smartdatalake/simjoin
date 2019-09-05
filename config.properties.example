@@ -5,6 +5,9 @@ mode = standard
 operation = search
 #operation = self-join
 #operation = join
+#operation = knn-join
+#operation = knn-self-join
+#operation = knn-search
 
 ### INPUT ###
 query_file = data/test_input_R.csv
@@ -17,6 +20,7 @@ set_column = 2
 tokens_column = 3
 column_delimiter = ;
 token_delimiter = ,
+header = false
 
 ### OUTPUT ###
 return_counts = false
@@ -24,3 +28,6 @@ output_file = out.txt
 
 ### SIMILARITY ###
 sim_threshold = 0.8
+
+### TOP-k ###
+k = 3

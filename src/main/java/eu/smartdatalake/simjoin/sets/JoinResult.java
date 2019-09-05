@@ -1,4 +1,4 @@
-package simjoin.sets;
+package eu.smartdatalake.simjoin.sets;
 
 public class JoinResult {
 	public long totalMatches;

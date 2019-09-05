@@ -1,19 +1,20 @@
-package simjoin.sets.transform;
+package eu.smartdatalake.simjoin.sets.transform;
 
 import java.util.Arrays;
 
+import eu.smartdatalake.simjoin.sets.JoinResult;
+import eu.smartdatalake.simjoin.sets.TokenSet;
+import eu.smartdatalake.simjoin.sets.TokenSetCollection;
+import eu.smartdatalake.simjoin.sets.alg.IntJoinResult;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import simjoin.sets.JoinResult;
-import simjoin.sets.TokenSet;
-import simjoin.sets.TokenSetCollection;
-import simjoin.sets.alg.IntJoinResult;
 
 public class CollectionTransformer {
 
-	public TObjectIntMap<String> constructTokenDictionary(TokenSetCollection rawCollection) {
+	//Provides the document frequency of each token
+	public TokenFrequencyPair[] calculateTokenFrequency(TokenSetCollection rawCollection) {
 
 		// Compute token frequencies
 		TObjectIntMap<String> tokenDict = new TObjectIntHashMap<String>();
@@ -39,7 +40,17 @@ public class CollectionTransformer {
 		}
 		Arrays.sort(tfs);
 
+		return tfs;
+	}
+	
+	
+	public TObjectIntMap<String> constructTokenDictionary(TokenSetCollection rawCollection) {
+
+		// Sort tokens by frequency
+		TokenFrequencyPair[] tfs = calculateTokenFrequency(rawCollection);
+
 		// Assign integer IDs to tokens
+		TObjectIntMap<String> tokenDict = new TObjectIntHashMap<String>();
 		for (int i = 0; i < tfs.length; i++) {
 			tokenDict.put(tfs[i].token, i);
 		}
@@ -97,10 +108,18 @@ public class CollectionTransformer {
 		return collection;
 	}
 
-	class TokenFrequencyPair implements Comparable<TokenFrequencyPair> {
+	public class TokenFrequencyPair implements Comparable<TokenFrequencyPair> {
 		String token;
 		int frequency;
 
+		public String getToken() {
+			return this.token;
+		}
+		
+		public int getFrequency() {
+			return this.frequency;
+		}
+		
 		@Override
 		public int compareTo(TokenFrequencyPair tf) {
 			int r = this.frequency == tf.frequency ? this.token.compareTo(tf.token) : this.frequency - tf.frequency;

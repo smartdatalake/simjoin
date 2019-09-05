@@ -1,4 +1,4 @@
-package simjoin.sets;
+package eu.smartdatalake.simjoin.sets;
 
 import java.util.Set;
 

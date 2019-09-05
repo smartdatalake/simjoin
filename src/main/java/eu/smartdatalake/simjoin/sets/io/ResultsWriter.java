@@ -1,13 +1,13 @@
-package simjoin.sets.io;
+package eu.smartdatalake.simjoin.sets.io;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 
+import eu.smartdatalake.simjoin.sets.JoinResult;
+import eu.smartdatalake.simjoin.sets.TokenSet;
+import eu.smartdatalake.simjoin.sets.TokenSetCollection;
+import eu.smartdatalake.simjoin.sets.transform.IntSetCollection;
 import gnu.trove.map.TObjectIntMap;
-import simjoin.sets.JoinResult;
-import simjoin.sets.TokenSet;
-import simjoin.sets.TokenSetCollection;
-import simjoin.sets.transform.IntSetCollection;
 
 public class ResultsWriter {
 
