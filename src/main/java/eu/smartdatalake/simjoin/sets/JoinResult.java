@@ -6,4 +6,7 @@ public class JoinResult {
 	public int[] matchesPerSet;
 	public String[][] matches;
 	public double[][] matchScores;
+	public double joinTime;
+	public long leftSize;
+	public long rightSize;
 }
