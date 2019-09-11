@@ -3,11 +3,11 @@ package eu.smartdatalake.simjoin.sets.io;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 
+import gnu.trove.map.TObjectIntMap;
 import eu.smartdatalake.simjoin.sets.JoinResult;
 import eu.smartdatalake.simjoin.sets.TokenSet;
 import eu.smartdatalake.simjoin.sets.TokenSetCollection;
 import eu.smartdatalake.simjoin.sets.transform.IntSetCollection;
-import gnu.trove.map.TObjectIntMap;
 
 public class ResultsWriter {
 
@@ -62,7 +62,10 @@ public class ResultsWriter {
 					for (int i = 0; i < result.querySets.length; i++) {
 						if (result.matches[i].length > 0) {
 							for (int j = 0; j < result.matches[i].length; j++) {
-								writer.println(result.querySets[i] + "," + result.matches[i][j] + "," + result.matchScores[i][j] + " ");
+								if (result.querySets[i].equals(result.matches[i][j]))
+									System.out.println("SelfSelf");
+								writer.println(result.querySets[i] + "," + result.matches[i][j] + ","
+										+ result.matchScores[i][j] + " ");
 							}
 						}
 					}
@@ -78,6 +81,18 @@ public class ResultsWriter {
 				e.printStackTrace();
 			}
 		}
+
+		try {
+			PrintWriter writer = new PrintWriter("stats.txt");
+			writer.println("totalMatches=" + result.totalMatches);
+			writer.println("joinTime=" + result.joinTime);
+			writer.println("leftSize=" + result.leftSize);
+			writer.println("rightSize=" + result.rightSize);
+			writer.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+
 	}
 
 	// /** Sorts a map by its values */

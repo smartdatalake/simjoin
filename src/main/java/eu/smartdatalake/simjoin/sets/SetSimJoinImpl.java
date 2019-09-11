@@ -51,6 +51,8 @@ public class SetSimJoinImpl implements ISetSimJoin {
 		JoinResult result = transformer.transformResult(joinResult, transformedCollection1.idMap,
 				transformedCollection2.idMap);
 
+		result.joinTime = duration / 1000000000.0;
+
 		return result;
 	}
 
@@ -90,12 +92,14 @@ public class SetSimJoinImpl implements ISetSimJoin {
 		JoinResult result = transformer.transformResult(joinResult, transformedCollection1.idMap,
 				transformedCollection2.idMap);
 
+		result.joinTime = duration / 1000000000.0;
+
 		return result;
 	}
 
 	@Override
 	public JoinResult closestPairsSelfJoin(TokenSetCollection collection, int k) {
-		
+
 		// Transform the input collections
 		long duration = System.nanoTime();
 		CollectionTransformer transformer = new CollectionTransformer();
@@ -113,8 +117,11 @@ public class SetSimJoinImpl implements ISetSimJoin {
 		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
 
 		// Transform back the result
-		JoinResult result = transformer.transformResult(joinResult, transformedCollection.idMap, transformedCollection.idMap);
-		
+		JoinResult result = transformer.transformResult(joinResult, transformedCollection.idMap,
+				transformedCollection.idMap);
+
+		result.joinTime = duration / 1000000000.0;
+
 		return result;
 	}
 
@@ -141,6 +148,8 @@ public class SetSimJoinImpl implements ISetSimJoin {
 		// Transform back the result
 		JoinResult result = transformer.transformResult(joinResult, transformedCollection1.idMap,
 				transformedCollection2.idMap);
+
+		result.joinTime = duration / 1000000000.0;
 
 		return result;
 	}
