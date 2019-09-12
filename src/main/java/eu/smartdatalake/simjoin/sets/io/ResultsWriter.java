@@ -52,7 +52,7 @@ public class ResultsWriter {
 		}
 	}
 
-	public void printJoinResults(JoinResult result, String outputFile) {
+	public void printJoinResults(JoinResult result, String outputFile, boolean self) {
 		System.out.println("Total Matches: " + result.totalMatches);
 
 		if (outputFile != null) {
@@ -62,8 +62,8 @@ public class ResultsWriter {
 					for (int i = 0; i < result.querySets.length; i++) {
 						if (result.matches[i].length > 0) {
 							for (int j = 0; j < result.matches[i].length; j++) {
-								if (result.querySets[i].equals(result.matches[i][j]))
-									System.out.println("SelfSelf");
+								if (self && (result.querySets[i].compareTo(result.matches[i][j]) <= 0))
+									continue;
 								writer.println(result.querySets[i] + "," + result.matches[i][j] + ","
 										+ result.matchScores[i][j] + " ");
 							}

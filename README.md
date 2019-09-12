@@ -1,6 +1,6 @@
-## SimJoin
+# SimJoin
 
-#### Overview
+## Overview
 
 SimJoin is a Java library providing functions for threshold-based and top-k set similarity joins (see [[Jiang2014](http://www.vldb.org/pvldb/vol7/p625-jiang.pdf), [Mann2016](http://www.vldb.org/pvldb/vol9/p636-mann.pdf), [Xiao2009](https://ieeexplore.ieee.org/document/4812465), [Deng2017](http://www.vldb.org/pvldb/vol10/p1082-deng.pdf)]. It currently supports the following functionalities:
 
@@ -9,11 +9,11 @@ SimJoin is a Java library providing functions for threshold-based and top-k set 
 - k-closest pairs for set similarity join and self-join.
 - Threshold-based fuzzy set similarity search, join and self-join.
 
-#### Documentation
+## Documentation
 
 Javadoc is available [here](https://smartdatalake.github.io/simjoin/).
 
-#### Usage
+## Usage
 
 **Step 1**. Download or clone the project:
 ```sh
@@ -32,6 +32,6 @@ $ mvn install
 $ java -jar target/simjoin-0.0.1-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-#### License
+## License
 
 The contents of this project are licensed under the [Apache License 2.0](https://github.com/SLIPO-EU/loci/blob/master/LICENSE).

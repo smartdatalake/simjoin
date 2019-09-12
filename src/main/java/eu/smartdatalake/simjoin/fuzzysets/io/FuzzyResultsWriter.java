@@ -7,7 +7,7 @@ import eu.smartdatalake.simjoin.fuzzysets.FuzzyJoinResult;
 
 public class FuzzyResultsWriter {
 
-	public void printJoinResults(FuzzyJoinResult result, String outputFile) {
+	public void printJoinResults(FuzzyJoinResult result, String outputFile, boolean self) {
 		System.out.println("Total Matches: " + result.totalMatches);
 
 		if (outputFile != null) {
@@ -15,6 +15,11 @@ public class FuzzyResultsWriter {
 				PrintWriter writer = new PrintWriter(outputFile);
 				if (result.matches != null) {
 					for (String key : result.matches.keySet()) {
+						if (self) {
+							String[] keys = key.split(",");
+							if (keys[0].compareTo(keys[1]) <= 0)
+								continue;
+						}
 						writer.println(key + "," + result.matches.get(key));
 					}
 				} else {

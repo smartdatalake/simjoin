@@ -123,7 +123,7 @@ public class RunSimJoin {
 				result.leftSize = (querySet == null)
 						? (queryCollection == null) ? collection.sets.length : queryCollection.sets.length : 1;
 				result.rightSize = collection.sets.length;
-				resultsWriter.printJoinResults(result, outputFile);
+				resultsWriter.printJoinResults(result, outputFile, operation.contains("self"));
 			}
 
 			else if (mode.equalsIgnoreCase("fuzzy")) {
@@ -166,7 +166,7 @@ public class RunSimJoin {
 				result.leftSize = (querySet == null)
 						? (queryCollection == null) ? collection.sets.size() : queryCollection.sets.size() : 1;
 				result.rightSize = collection.sets.size();
-				resultsWriter.printJoinResults(result, outputFile);
+				resultsWriter.printJoinResults(result, outputFile, operation.contains("self"));
 			}
 
 		} catch (Exception e) {
