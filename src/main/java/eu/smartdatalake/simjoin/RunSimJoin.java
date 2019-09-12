@@ -104,6 +104,10 @@ public class RunSimJoin {
 					result = ssjoin.knnSearch(querySet, collection, k);
 					break;
 
+				case "knn-self-join":
+					result = ssjoin.knnSelfJoin(collection, k);
+					break;
+
 				case "knn-join":
 					result = ssjoin.knnJoin(queryCollection, collection, k);
 					break;
@@ -123,7 +127,7 @@ public class RunSimJoin {
 				result.leftSize = (querySet == null)
 						? (queryCollection == null) ? collection.sets.length : queryCollection.sets.length : 1;
 				result.rightSize = collection.sets.length;
-				resultsWriter.printJoinResults(result, outputFile, operation.contains("self"));
+				resultsWriter.printJoinResults(result, outputFile, operation.equals("self-join"));
 			}
 
 			else if (mode.equalsIgnoreCase("fuzzy")) {
@@ -166,7 +170,7 @@ public class RunSimJoin {
 				result.leftSize = (querySet == null)
 						? (queryCollection == null) ? collection.sets.size() : queryCollection.sets.size() : 1;
 				result.rightSize = collection.sets.size();
-				resultsWriter.printJoinResults(result, outputFile, operation.contains("self"));
+				resultsWriter.printJoinResults(result, outputFile, operation.equals("self-join"));
 			}
 
 		} catch (Exception e) {

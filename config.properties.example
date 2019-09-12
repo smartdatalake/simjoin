@@ -6,9 +6,11 @@ mode = standard
 operation = search
 #operation = self-join
 #operation = join
-#operation = knn-join
-#operation = knn-self-join
 #operation = knn-search
+#operation = knn-self-join
+#operation = knn-join
+#operation = self-closest-pairs
+#operation = closest-pairs
 
 ### INPUT ###
 query_file = data/test_input_R.csv
