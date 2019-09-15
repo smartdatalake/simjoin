@@ -1,6 +1,7 @@
 config.properties
 out.txt
 stats.txt
+.ipynb_checkpoints
 
 ##########################
 ## Java
