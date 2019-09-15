@@ -54,6 +54,7 @@ public class RunSimJoin {
 			// output
 			boolean returnCounts = Boolean.parseBoolean(prop.getProperty("return_counts"));
 			String outputFile = prop.getProperty("output_file");
+			String statsFile = prop.getProperty("stats_file");
 
 			// similarity
 			double simThreshold = Double.parseDouble(prop.getProperty("sim_threshold"));
@@ -127,7 +128,7 @@ public class RunSimJoin {
 				result.leftSize = (querySet == null)
 						? (queryCollection == null) ? collection.sets.length : queryCollection.sets.length : 1;
 				result.rightSize = collection.sets.length;
-				resultsWriter.printJoinResults(result, outputFile, operation.equals("self-join"));
+				resultsWriter.printJoinResults(result, outputFile, statsFile, operation.equals("self-join"));
 			}
 
 			else if (mode.equalsIgnoreCase("fuzzy")) {
@@ -170,7 +171,7 @@ public class RunSimJoin {
 				result.leftSize = (querySet == null)
 						? (queryCollection == null) ? collection.sets.size() : queryCollection.sets.size() : 1;
 				result.rightSize = collection.sets.size();
-				resultsWriter.printJoinResults(result, outputFile, operation.equals("self-join"));
+				resultsWriter.printJoinResults(result, outputFile, statsFile, operation.equals("self-join"));
 			}
 
 		} catch (Exception e) {

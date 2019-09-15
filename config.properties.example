@@ -29,6 +29,7 @@ header = false
 ### OUTPUT ###
 return_counts = true
 output_file = out.txt
+stats_file = stats.txt
 
 ### SIMILARITY ###
 sim_threshold = 0.8
