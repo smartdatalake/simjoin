@@ -1,0 +1,16 @@
+{
+    "query_file":"data/test_input_R.csv",
+    "input_file":"data/test_input_S.csv",
+    "max_lines":"-1",
+    "set_column":"1",
+    "elements_column":"2",
+    "tokens_column":"3",
+    "column_delimiter":";",
+    "token_delimiter":",",
+    "header":"false",
+    "output_file":"out.txt",
+    "mode":"standard",
+    "join_type":"threshold",
+    "threshold":"0.5",
+    "k":"3"
+}

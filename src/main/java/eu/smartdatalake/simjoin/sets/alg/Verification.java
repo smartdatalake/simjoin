@@ -3,12 +3,27 @@ package eu.smartdatalake.simjoin.sets.alg;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 
+/**
+ * Implements the verification stage for set similarity joins.
+ *
+ */
 public class Verification {
 
-	public boolean verifyOpt(int[] r, int[] s, int minOverlap) {
+	/**
+	 * Checks whether the similarity score of a given pair is above the
+	 * specified threshold.
+	 * 
+	 * @param r
+	 *            The left set.
+	 * @param s
+	 *            The right set.
+	 * @param minOverlap
+	 *            The threshold.
+	 * @return Whether the similarity score exceeds the threshold.
+	 */
+	public boolean verifyJaccardOpt(int[] r, int[] s, int minOverlap) {
 
 		int olap = 0, pr = 0, ps = 0;
-
 		int maxr = r.length - pr + olap;
 		int maxs = s.length - ps + olap;
 
@@ -28,15 +43,20 @@ public class Verification {
 		return olap >= minOverlap;
 	}
 
+	/**
+	 * Computes the similarity score of a given pair.
+	 * 
+	 * @param r
+	 *            The left set.
+	 * @param s
+	 *            The right set.
+	 * @return The similarity score.
+	 */
 	public double verifyWithScore(int[] r, int[] s) {
 
-		int olap, pr, ps, maxr, maxs;
-
-		olap = 0;
-		pr = 0;
-		ps = 0;
-		maxr = r.length - pr + olap;
-		maxs = s.length - ps + olap;
+		int olap = 0, pr = 0, ps = 0;
+		int maxr = r.length - pr + olap;
+		int maxs = s.length - ps + olap;
 
 		while (maxr > olap && maxs > olap) {
 
@@ -56,7 +76,16 @@ public class Verification {
 		return (double) (olap / (1.0 * (r.length + s.length - olap)));
 	}
 
-	public double verifyBasic(int[] r, int[] s) {
+	/**
+	 * Computes the similarity score of a given pair.
+	 * 
+	 * @param r
+	 *            The left set.
+	 * @param s
+	 *            The right set.
+	 * @return The similarity score.
+	 */
+	public double verifyJaccardBasic(int[] r, int[] s) {
 
 		TIntSet intersection = new TIntHashSet(r);
 		intersection.retainAll(s);
