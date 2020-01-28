@@ -1,4 +1,5 @@
 config.properties
+config.json
 out.txt
 stats.txt
 .ipynb_checkpoints
