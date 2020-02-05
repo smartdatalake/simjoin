@@ -51,7 +51,7 @@ public class SignatureEvent {
 		tokenScores = new PriorityQueue<TokenScore>();
 		// then include costs
 		for (int token : tokenScores2.keys()) {
-			tokenScores.add(new TokenScore(token, round(costs[token] * round(tokenScores2.get(token), 10), 10)));
+			tokenScores.add(new TokenScore(token, costs[token] / tokenScores2.get(token)));
 		}
 	}
 
@@ -81,12 +81,6 @@ public class SignatureEvent {
 			elementBounds[id_r] = (double) (querySet[id_r].length - unflattenedSignature[id_r].size())
 					/ (double) querySet[id_r].length;
 		}
-	}
-
-	private static double round(double value, int places) {
-		BigDecimal bd = new BigDecimal(Double.toString(value));
-		bd = bd.setScale(places, RoundingMode.HALF_UP);
-		return bd.doubleValue();
 	}
 }
 

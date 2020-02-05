@@ -147,8 +147,6 @@ public class TopKJoin {
 			// Search the index for this token
 			for (int j = 0; j < idx[w].size(); j++) {
 				candidate = idx[w].get(j); // Identifier of the candidate set
-				if (candidate >= count)
-					continue;
 				int[] y = collection.sets[candidate]; // Candidate set from the
 														// index
 				spy = sdx[w].get(j);

@@ -7,6 +7,10 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+
 /**
  * The entry point of the execution. Execution parameters are provided in the
  * file config.json or another file specified as argument.
@@ -22,6 +26,11 @@ public class MainRunner {
 			/* READ PARAMETERS */
 			JSONParser jsonParser = new JSONParser();
 			JSONObject config = (JSONObject) jsonParser.parse(new FileReader(configFile));
+
+			String logFile = String.valueOf(config.get("log_file"));
+			System.setProperty("logFilename", logFile);
+			LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+			ctx.reconfigure();
 
 			// operation
 			String mode = String.valueOf(config.get("mode"));
