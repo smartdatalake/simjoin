@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONObject;
 
 import eu.smartdatalake.simjoin.GroupCollection;
@@ -19,6 +21,7 @@ import eu.smartdatalake.simjoin.MatchingPair;
  *
  */
 public class RunFuzzySetSimJoin {
+	private static final Logger logger = LogManager.getLogger(RunFuzzySetSimJoin.class);
 
 	public void execute(JSONObject config) {
 		try {
@@ -49,10 +52,17 @@ public class RunFuzzySetSimJoin {
 				tokenDelimiter = " ";
 			boolean header = Boolean.parseBoolean(String.valueOf(config.get("header")));
 
+			String tokenizer = String.valueOf(config.get("tokenizer"));
+			if (tokenizer.equals("null") || tokenizer.equals(""))
+				tokenizer = "word";
+			int qgram = Integer.parseInt(String.valueOf(config.get("qgram")));
+
 			/* EXECUTE THE OPERATION */
 			long numMatches = 0;
 			FuzzySetCollectionReader reader = new FuzzySetCollectionReader();
-			ConcurrentLinkedQueue<MatchingPair> results = new ConcurrentLinkedQueue<MatchingPair>();
+			ConcurrentLinkedQueue<MatchingPair> results = null;
+			if (!outputFile.equals("null"))
+				results = new ConcurrentLinkedQueue<MatchingPair>();
 
 			long duration = System.nanoTime();
 			Thread simjoinThread = null;
@@ -60,12 +70,12 @@ public class RunFuzzySetSimJoin {
 			GroupCollection<ArrayList<String>> collection1 = null;
 			if (queryFile != null) {
 				collection1 = reader.fromCSV(queryFile, colSets, colElements, colTokens, colWeights, columnDelimiter,
-						tokenDelimiter, maxLines, header);
+						tokenDelimiter, maxLines, header, tokenizer, qgram);
 			}
 			GroupCollection<ArrayList<String>> collection2 = reader.fromCSV(inputFile, colSets, colElements, colTokens,
-					colWeights, columnDelimiter, tokenDelimiter, maxLines, header);
+					colWeights, columnDelimiter, tokenDelimiter, maxLines, header, tokenizer, qgram);
 			duration = System.nanoTime() - duration;
-			System.out.println("Read time: " + duration / 1000000000.0 + " sec.");
+			logger.info("Read time: " + duration / 1000000000.0 + " sec.");
 
 			FuzzySetSimJoin ssjoin = null;
 			// THRESHOLD-JOIN
@@ -89,15 +99,28 @@ public class RunFuzzySetSimJoin {
 
 				// specify k
 				int k = Integer.parseInt(String.valueOf(config.get("k")));
+				try {
+					double threshold = Double.parseDouble(String.valueOf(config.get("threshold")));
+					// SELF-JOIN
+					if (queryFile == null) {
+						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection2, k, threshold, results);
+					}
+					// FOREIGN-JOIN
+					else {
+						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection1, collection2, k, threshold,
+								results);
+					}
+				} catch (Exception e) {
+					// SELF-JOIN
+					if (queryFile == null) {
+						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection2, k, results);
+					}
+					// FOREIGN-JOIN
+					else {
+						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection1, collection2, k, results);
+					}
+				}
 
-				// SELF-JOIN
-				if (queryFile == null) {
-					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection2, k, results);
-				}
-				// FOREIGN-JOIN
-				else {
-					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection1, collection2, k, results);
-				}
 			}
 			// TOPK-JOIN
 			if (joinType.equalsIgnoreCase("topk")) {
@@ -119,20 +142,27 @@ public class RunFuzzySetSimJoin {
 			simjoinThread.start();
 
 			// OUTPUT RESULTS
-			MatchingPair result;
-			PrintStream outStream = new PrintStream(outputFile);
+			if (results != null) {
+				MatchingPair result;
+				PrintStream outStream = new PrintStream(outputFile);
 
-			while (simjoinThread.isAlive() || !results.isEmpty()) {
-				while (!results.isEmpty()) {
-					result = results.poll();
-					outStream.println(result);
-					numMatches++;
+				while (simjoinThread.isAlive() || !results.isEmpty()) {
+					while (!results.isEmpty()) {
+						result = results.poll();
+						outStream.println(result);
+						numMatches++;
+					}
+					TimeUnit.MILLISECONDS.sleep(10);
 				}
-				TimeUnit.MILLISECONDS.sleep(10);
+				outStream.flush();
+				outStream.close();
+				logger.info("Number of matches: " + numMatches);
+				System.out.println("Number of matches: " + numMatches);
+			} else {
+				while (simjoinThread.isAlive()) {
+					TimeUnit.MILLISECONDS.sleep(10);
+				}
 			}
-			outStream.flush();
-			outStream.close();
-			System.out.println("Number of matches: " + numMatches);
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		} catch (FileNotFoundException e) {

@@ -2,6 +2,9 @@ package eu.smartdatalake.simjoin.sets;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import eu.smartdatalake.simjoin.ISimJoin;
 import eu.smartdatalake.simjoin.MatchingPair;
 import eu.smartdatalake.simjoin.sets.alg.KNNJoin;
@@ -15,35 +18,39 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 	public final static int TYPE_THRESHOLD = 0;
 	public final static int TYPE_KNN = 1;
 	public final static int TYPE_TOPK = 2;
+	private static final Logger logger = LogManager.getLogger(SetSimJoin.class);
 
 	int type;
 	GroupCollection<String> collection1;
 	GroupCollection<String> collection2;
 	double threshold;
+	double limitThreshold;
 	ConcurrentLinkedQueue<MatchingPair> results;
 
-	public SetSimJoin(int type, GroupCollection<String> collection, double threshold,
-			ConcurrentLinkedQueue<MatchingPair> results) {
-		super();
-		this.type = type;
-		this.collection1 = collection;
-		this.collection2 = null;
-		this.threshold = threshold;
-		this.results = results;
-	}
-
 	public SetSimJoin(int type, GroupCollection<String> collection1, GroupCollection<String> collection2,
-			double threshold, ConcurrentLinkedQueue<MatchingPair> results) {
+			double threshold, double limitThreshold, ConcurrentLinkedQueue<MatchingPair> results) {
 		super();
 		this.type = type;
 		this.collection1 = collection1;
 		this.collection2 = collection2;
 		this.threshold = threshold;
+		this.limitThreshold = limitThreshold;
 		this.results = results;
 	}
 
-	public SetSimJoin() {
-		super();
+	public SetSimJoin(int type, GroupCollection<String> collection, double threshold,
+			ConcurrentLinkedQueue<MatchingPair> results) {
+		this(type, collection, null, threshold, 0.0, results);
+	}
+
+	public SetSimJoin(int type, GroupCollection<String> collection1, GroupCollection<String> collection2,
+			double threshold, ConcurrentLinkedQueue<MatchingPair> results) {
+		this(type, collection1, collection2, threshold, 0.0, results);
+	}
+
+	public SetSimJoin(int type, GroupCollection<String> collection, double threshold, double limitThreshold,
+			ConcurrentLinkedQueue<MatchingPair> results) {
+		this(type, collection, null, threshold, limitThreshold, results);
 	}
 
 	public void thresholdJoin(GroupCollection<String> collection, double threshold,
@@ -58,7 +65,7 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		joinAlg.selfJoin(transformedCollection, threshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void thresholdJoin(GroupCollection<String> collection1, GroupCollection<String> collection2,
@@ -75,10 +82,11 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		joinAlg.join(transformedCollection1, transformedCollection2, threshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
-	public void knnJoin(GroupCollection<String> collection, int k, ConcurrentLinkedQueue<MatchingPair> results) {
+	public void knnJoin(GroupCollection<String> collection, int k, double limitThreshold,
+			ConcurrentLinkedQueue<MatchingPair> results) {
 
 		// Preprocess the input collection
 		IntSetCollection transformedCollection = preprocess(collection);
@@ -86,14 +94,14 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		// Execute the join
 		long duration = System.nanoTime();
 		KNNJoin joinAlg = new KNNJoin();
-		joinAlg.selfJoin(transformedCollection, k, results);
+		joinAlg.selfJoin(transformedCollection, k, limitThreshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void knnJoin(GroupCollection<String> collection1, GroupCollection<String> collection2, int k,
-			ConcurrentLinkedQueue<MatchingPair> results) {
+			double limitThreshold, ConcurrentLinkedQueue<MatchingPair> results) {
 
 		// Preprocess the input collections
 		IntSetCollection[] transformedCollections = preprocess(collection1, collection2);
@@ -103,10 +111,10 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		// Execute the join
 		long duration = System.nanoTime();
 		KNNJoin joinAlg = new KNNJoin();
-		joinAlg.join(transformedCollection1, transformedCollection2, k, results);
+		joinAlg.join(transformedCollection1, transformedCollection2, k, limitThreshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void topkJoin(GroupCollection<String> collection, int k, ConcurrentLinkedQueue<MatchingPair> results) {
@@ -120,7 +128,7 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		joinAlg.selfJoin(transformedCollection, k, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void topkJoin(GroupCollection<String> collection1, GroupCollection<String> collection2, int k,
@@ -137,7 +145,7 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		joinAlg.join(transformedCollection1, transformedCollection2, k, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	private IntSetCollection preprocess(GroupCollection<String> collection) {
@@ -148,8 +156,8 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		IntSetCollection transformedCollection = transformer.transformCollection(collection, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Transform time: " + duration / 1000000000.0 + " sec.");
-		System.out.println("Collection size: " + transformedCollection.sets.length);
+		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Collection size: " + transformedCollection.sets.length);
 
 		return transformedCollection;
 	}
@@ -163,9 +171,9 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		IntSetCollection transformedCollection1 = transformer.transformCollection(collection1, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Transform time: " + duration / 1000000000.0 + " sec.");
-		System.out.println("Left collection size: " + transformedCollection1.sets.length);
-		System.out.println("Right collection size: " + transformedCollection2.sets.length);
+		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Left collection size: " + transformedCollection1.sets.length);
+		logger.info("Right collection size: " + transformedCollection2.sets.length);
 
 		return new IntSetCollection[] { transformedCollection1, transformedCollection2 };
 	}
@@ -181,9 +189,9 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 			break;
 		case TYPE_KNN:
 			if (collection2 == null) {
-				knnJoin(collection1, (int) threshold, results);
+				knnJoin(collection1, (int) threshold, limitThreshold, results);
 			} else {
-				knnJoin(collection1, collection2, (int) threshold, results);
+				knnJoin(collection1, collection2, (int) threshold, limitThreshold, results);
 			}
 			break;
 		case TYPE_TOPK:
@@ -196,5 +204,6 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		default:
 			break;
 		}
+		logger.info("Parameter: "+threshold);
 	}
 }

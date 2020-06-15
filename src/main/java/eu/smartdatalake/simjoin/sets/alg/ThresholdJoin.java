@@ -18,17 +18,16 @@ import gnu.trove.set.hash.TIntHashSet;
  *
  */
 public class ThresholdJoin {
+
+	int weightedSets = 0, weightedCandidates = 0, totalCandidates = 0;
 	private static final Logger logger = LogManager.getLogger(ThresholdJoin.class);
 
 	/**
 	 * Implements threshold-based self-join.
 	 * 
-	 * @param collection
-	 *            The input collection.
-	 * @param threshold
-	 *            The similarity threshold.
-	 * @param results
-	 *            The queue to which the results are added.
+	 * @param collection The input collection.
+	 * @param threshold  The similarity threshold.
+	 * @param results    The queue to which the results are added.
 	 */
 	public void selfJoin(IntSetCollection collection, double threshold, ConcurrentLinkedQueue<MatchingPair> results) {
 
@@ -56,15 +55,21 @@ public class ThresholdJoin {
 		for (int[] r : collection.sets) {
 			pb.progress(joinTime);
 
+			double weightedThreshold = 2.0 / (collection.weights[count] + 1) * threshold;
+			if (weightedThreshold > 1.0)
+				continue;
+			weightedSets++;
+
 			// Compute thresholds
 			rLen = r.length;
-			minLength = (int) Math.ceil(rLen * threshold);
-			maxLength = (int) Math.ceil(rLen / threshold);
+			minLength = (int) Math.ceil(rLen * weightedThreshold);
+			maxLength = (int) Math.floor(rLen / weightedThreshold);
 			minOverlap = new int[maxLength - minLength + 1];
 			prefixLength = new int[maxLength - minLength + 1];
 			for (int i = 0; i < minOverlap.length; i++) {
-				minOverlap[i] = (int) Math
-						.ceil(Math.round((threshold / (1 + threshold)) * (rLen + minLength + i) * 100000) / 100000.0);
+				minOverlap[i] = (int) Math.ceil(
+						Math.round((weightedThreshold / (1 + weightedThreshold)) * (rLen + minLength + i) * 100000)
+								/ 100000.0);
 				prefixLength[i] = rLen - minOverlap[i] + 1;
 			}
 
@@ -76,6 +81,13 @@ public class ThresholdJoin {
 					if (candidates.contains(candidate))
 						continue;
 
+					totalCandidates++;
+					double doubleWeightedThreshold = 2.0 / (collection.weights[count] + collection.weights[candidate])
+							* threshold;
+					if (doubleWeightedThreshold > 1.0)
+						continue;
+					weightedCandidates++;
+
 					sLen = collection.sets[candidate].length;
 
 					if (sLen > maxLength - i) {
@@ -83,9 +95,10 @@ public class ThresholdJoin {
 						continue;
 					}
 
-					if (sLen >= minLength) {
+					int tempMinLength = (int) Math.ceil(rLen * doubleWeightedThreshold);
+					if (sLen >= tempMinLength) {
 						// Apply prefix filter for this specific pair
-						eqoverlap = minOverlap[sLen - minLength];
+						eqoverlap = minOverlap[sLen - tempMinLength];
 						rPrefixLength = rLen - eqoverlap + 1;
 						if (rPrefixLength < i) {
 							candidates.add(candidate);
@@ -106,12 +119,14 @@ public class ThresholdJoin {
 
 							// Verify candidate
 							double score = 0.0;
-							eqoverlap = minOverlap[sLen - minLength];
+							eqoverlap = minOverlap[sLen - tempMinLength];
 							score = verification.verifyWithScore(r, collection.sets[candidate]);
+							score = (collection.weights[count] + collection.weights[candidate]) / 2.0 * score;
 
 							if (score >= threshold) {
 								// Add the result to the output
-								results.add(
+								if (results != null)
+									results.add(
 										new MatchingPair(collection.keys[count], collection.keys[candidate], score));
 								numMatches++;
 							}
@@ -132,21 +147,22 @@ public class ThresholdJoin {
 
 		joinTime = System.nanoTime() - joinTime;
 		logger.info("Size: " + collection.sets.length);
+		logger.info("Weighted Sets: " + weightedSets);
+		logger.info("Total Candidates: " + totalCandidates);
+		logger.info("Weighted Candidates: " + weightedCandidates);
 		logger.info("Join algorithm time: " + joinTime / 1000000000.0 + " sec.");
 		logger.info("Number of matches: " + numMatches);
+		if (results == null)
+			System.out.println("Total Matches: " + numMatches);
 	}
 
 	/**
 	 * Implements threshold-based join.
 	 * 
-	 * @param collection1
-	 *            The left collection.
-	 * @param collection2
-	 *            The right collection.
-	 * @param threshold
-	 *            The similarity threshold.
-	 * @param results
-	 *            The queue to which the results are added.
+	 * @param collection1 The left collection.
+	 * @param collection2 The right collection.
+	 * @param threshold   The similarity threshold.
+	 * @param results     The queue to which the results are added.
 	 */
 	public void join(IntSetCollection collection1, IntSetCollection collection2, double threshold,
 			ConcurrentLinkedQueue<MatchingPair> results) {
@@ -163,7 +179,9 @@ public class ThresholdJoin {
 		}
 		// iterate over the sets and populate the inverted lists
 		for (int i = 0; i < collection2.sets.length; i++) {
-			int prefixLength = collection2.sets[i].length - (int) Math.ceil(collection2.sets[i].length * threshold) + 1;
+			double weightedThresholdr = 2.0 / (collection2.weights[i] + 1) * threshold;
+			int prefixLength = collection2.sets[i].length
+					- (int) Math.ceil(collection2.sets[i].length * weightedThresholdr) + 1;
 
 			for (int j = 0; j < prefixLength; j++) {
 				tmpIdx[collection2.sets[i][j]].add(i);
@@ -191,15 +209,21 @@ public class ThresholdJoin {
 
 			rLen = r.length;
 
+			double weightedThreshold = 2.0 / (collection1.weights[count] + 1) * threshold;
+			if (weightedThreshold > 1.0)
+				continue;
+			weightedSets++;
+
 			// Compute thresholds
-			minLength = (int) Math.ceil(rLen * threshold);
-			maxLength = (int) Math.ceil(rLen / threshold);
+			minLength = (int) Math.ceil(rLen * weightedThreshold);
+			maxLength = (int) Math.floor(rLen / weightedThreshold);
 
 			minOverlap = new int[maxLength - minLength + 1];
 			prefixLength = new int[maxLength - minLength + 1];
 			for (int i = 0; i < minOverlap.length; i++) {
-				minOverlap[i] = (int) Math
-						.ceil(Math.round((threshold / (1 + threshold)) * (rLen + minLength + i) * 100000) / 100000.0);
+				minOverlap[i] = (int) Math.ceil(
+						Math.round((weightedThreshold / (1 + weightedThreshold)) * (rLen + minLength + i) * 100000)
+								/ 100000.0);
 				prefixLength[i] = rLen - minOverlap[i] + 1;
 			}
 
@@ -243,6 +267,14 @@ public class ThresholdJoin {
 					candidate = idx[r[i]][j];
 					if (candidates.contains(candidate))
 						continue;
+
+					totalCandidates++;
+					double doubleWeightedThreshold = 2.0 / (collection1.weights[count] + collection2.weights[candidate])
+							* threshold;
+					if (doubleWeightedThreshold > 1.0)
+						continue;
+					weightedCandidates++;
+
 					sLen = collection2.sets[candidate].length;
 
 					// Apply the length filter
@@ -251,8 +283,9 @@ public class ThresholdJoin {
 						break;
 					}
 
+					int tempMinLength = (int) Math.ceil(rLen * doubleWeightedThreshold);
 					// Apply the prefix filter for this specific pair
-					eqoverlap = minOverlap[sLen - minLength];
+					eqoverlap = minOverlap[sLen - tempMinLength];
 					rPrefixLength = rLen - eqoverlap + 1;
 
 					if (rPrefixLength >= i) {
@@ -270,13 +303,15 @@ public class ThresholdJoin {
 							// Verify candidate
 							double score = 0.0;
 
-							eqoverlap = minOverlap[collection2.sets[candidate].length - minLength];
+							eqoverlap = minOverlap[collection2.sets[candidate].length - tempMinLength];
 							score = verification.verifyWithScore(r, collection2.sets[candidate]);
+							score = (collection1.weights[count] + collection2.weights[candidate]) / 2.0 * score;
 
 							if (score >= threshold) {
 								// Add the result to the output
-								results.add(
-										new MatchingPair(collection1.keys[count], collection2.keys[candidate], score));
+								if (results != null)
+									results.add(new MatchingPair(collection1.keys[count], collection2.keys[candidate],
+											score));
 								numMatches++;
 							}
 						}
@@ -290,7 +325,12 @@ public class ThresholdJoin {
 		joinTime = System.nanoTime() - joinTime;
 		logger.info("Left Size: " + collection1.sets.length);
 		logger.info("Right Size: " + collection2.sets.length);
+		logger.info("Weighted Sets: " + weightedSets);
+		logger.info("Total Candidates: " + totalCandidates);
+		logger.info("Weighted Candidates: " + weightedCandidates);
 		logger.info("Join algorithm time: " + joinTime / 1000000000.0 + " sec.");
 		logger.info("Number of matches: " + numMatches);
+		if (results == null)
+			System.out.println("Total Matches: " + numMatches);
 	}
 }

@@ -1,5 +1,6 @@
 package eu.smartdatalake.simjoin.sets.alg;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -30,12 +31,9 @@ public class TopKJoin {
 	/**
 	 * Implements top-k self-join.
 	 * 
-	 * @param collection
-	 *            The input collection.
-	 * @param k
-	 *            The number of pairs to return.
-	 * @param results
-	 *            The queue to which the results are added.
+	 * @param collection The input collection.
+	 * @param k          The number of pairs to return.
+	 * @param results    The queue to which the results are added.
 	 */
 	public void selfJoin(IntSetCollection collection, int k, ConcurrentLinkedQueue<MatchingPair> results) {
 		long joinTime = System.nanoTime();
@@ -46,7 +44,7 @@ public class TopKJoin {
 		// Priority queue of the prefix events
 		PriorityQueue<PrefixEvent> prefixQueue = new PriorityQueue<PrefixEvent>();
 		for (int i = 0; i < collection.sets.length; i++) {
-			prefixQueue.add(new PrefixEvent(i, collection.sets[i].length));
+			prefixQueue.add(new PrefixEvent(i, collection.sets[i].length, collection.weights[i]));
 		}
 
 		// Priority queue of the current matching pairs
@@ -66,6 +64,7 @@ public class TopKJoin {
 			// subsequent sets in the input collection
 			for (int i = 1; i <= Math.min(collection.sets.length - 1, k); i++) {
 				double sim = verification.verifyWithScore(collection.sets[0], collection.sets[i]);
+				sim = (collection.weights[0] + collection.weights[i]) / 2.0 * sim;
 				verified.add(new Pair(i, 0));
 				matchesQueue.add(new IntMatchingPair(i, 0, sim));
 			}
@@ -125,34 +124,51 @@ public class TopKJoin {
 
 		ProgressBar pb = new ProgressBar(k);
 		// Consume items from the priority queue of events
-		while (!prefixQueue.isEmpty()) {
+		while (!prefixQueue.isEmpty() && numMatches != k) {
+			while (matchesQueue.getHighest() > prefixQueue.peek().spx) {
+				// Add the result to the output
+				pb.progress(joinTime);
+				IntMatchingPair temp = matchesQueue.export();
+				results.add(
+						new MatchingPair(collection.keys[temp.leftInd], collection.keys[temp.rightInd], temp.score));
+				numMatches++;
+			}
 			PrefixEvent event = prefixQueue.poll();
 
 			double simThreshold = matchesQueue.getThreshold();
+			count = event.element; // Identifier of the probing set
+
+			double weightedThreshold = 2.0 / (collection.weights[count] + 1) * simThreshold;
 
 			if (event.spx <= simThreshold) {
 				break;
 			}
 
-			count = event.element; // Identifier of the probing set
 			int[] x = collection.sets[count]; // Probing set
 			px = event.prefix;
 			// spx = 1.0 - ((px - 1) / (1.0 * x.length));
 			spx = event.spx;
-			minLength = (int) Math.ceil(x.length * simThreshold);
-			maxLength = (int) Math.ceil(x.length / simThreshold);
+			minLength = (int) Math.ceil(x.length * weightedThreshold);
+			maxLength = (int) Math.floor(x.length / weightedThreshold);
 
 			int w = x[px]; // Token to be examined
 
 			// Search the index for this token
 			for (int j = 0; j < idx[w].size(); j++) {
 				candidate = idx[w].get(j); // Identifier of the candidate set
+				if (count == candidate)
+					continue;
 				int[] y = collection.sets[candidate]; // Candidate set from the
 														// index
 				spy = sdx[w].get(j);
 
 				// Filtering against access similarity upper bound seems to
 				// remove excessive items
+				double doubleWeightedThreshold = 2.0 / (collection.weights[count] + collection.weights[candidate])
+						* simThreshold;
+				if (doubleWeightedThreshold > 1.0)
+					continue;
+
 				if (((spx * spy) / (spx + spy - (spx * spy))) < simThreshold) {
 					// Remove entries from the indices
 					idx[w].remove(j, idx[w].size() - j);
@@ -183,9 +199,10 @@ public class TopKJoin {
 
 					// Check pair against the hash table
 					if (!verified.contains(new Pair(a, b))) {
-						lx = x1.length - (int) Math.ceil(simThreshold * x1.length) + 1;
-						ly = y1.length - (int) Math.ceil(simThreshold * y1.length) + 1;
+						lx = x1.length - (int) Math.ceil(doubleWeightedThreshold * x1.length) + 1;
+						ly = y1.length - (int) Math.ceil(doubleWeightedThreshold * y1.length) + 1;
 						double sim = verification.verifyWithScore(x1, y1);
+						sim = (collection.weights[a] + collection.weights[b]) / 2.0 * sim;
 
 						// Check if this pair should be hashed to avoid future
 						// re-verification
@@ -215,10 +232,8 @@ public class TopKJoin {
 
 						if (sim >= simThreshold) {
 							matchesQueue.add(new IntMatchingPair(a, b, sim));
-							pb.progress(joinTime);
 							simThreshold = matchesQueue.getThreshold();
 						}
-
 					}
 				}
 			}
@@ -235,14 +250,17 @@ public class TopKJoin {
 			}
 
 			// Push the next token as a new event into the queue
-			if (!event.update() && event.spx >= simThreshold)
+			if (!event.update() && event.spx >= simThreshold && weightedThreshold < 1.0)
 				prefixQueue.add(event);
 		}
 
 		while (!matchesQueue.isEmpty()) {
 			// Add the result to the output
+			pb.progress(joinTime);
 			IntMatchingPair temp = matchesQueue.export();
-			results.add(new MatchingPair(collection.keys[temp.leftInd], collection.keys[temp.rightInd], temp.score));
+			if (results != null)
+				results.add(
+						new MatchingPair(collection.keys[temp.leftInd], collection.keys[temp.rightInd], temp.score));
 			numMatches++;
 		}
 
@@ -251,20 +269,19 @@ public class TopKJoin {
 		logger.info("Size: " + collection.sets.length);
 		logger.info("Join algorithm time: " + joinTime / 1000000000.0 + " sec.");
 		logger.info("Number of matches: " + numMatches);
+		if (results == null)
+			System.out.println("Total Matches: " + numMatches);
 	}
 
 	/**
 	 * Implements top-k join.
 	 * 
-	 * @param collection1
-	 *            The left collection.
-	 * @param collection2
-	 *            The right collection.
-	 * @param k
-	 *            The number of pairs to return.
-	 * @param results
-	 *            The queue to which the results are added.
+	 * @param collection1 The left collection.
+	 * @param collection2 The right collection.
+	 * @param k           The number of pairs to return.
+	 * @param results     The queue to which the results are added.
 	 */
+
 	public void join(IntSetCollection collection1, IntSetCollection collection2, int k,
 			ConcurrentLinkedQueue<MatchingPair> results) {
 		long joinTime = System.nanoTime();
@@ -275,7 +292,7 @@ public class TopKJoin {
 		// Priority queue of the prefix events
 		PriorityQueue<PrefixEvent> prefixQueue = new PriorityQueue<PrefixEvent>();
 		for (int i = 0; i < collection1.sets.length; i++) {
-			prefixQueue.add(new PrefixEvent(i, collection1.sets[i].length));
+			prefixQueue.add(new PrefixEvent(i, collection1.sets[i].length, collection1.weights[i]));
 		}
 
 		// Priority queue of the current matching pairs
@@ -298,6 +315,7 @@ public class TopKJoin {
 			// sets in the input collection
 			for (int i = 1; i <= Math.min(collection2.sets.length - 1, k); i++) {
 				double sim = verification.verifyWithScore(collection1.sets[0], collection2.sets[i]);
+				sim = (collection1.weights[0] + collection2.weights[i]) / 2.0 * sim;
 				verified.add(new Pair(0, i));
 				matchesQueue.add(new IntMatchingPair(0, i, sim));
 			}
@@ -359,84 +377,103 @@ public class TopKJoin {
 
 		// Consume items from the priority queue of events
 		ProgressBar pb = new ProgressBar(k);
-		while (!prefixQueue.isEmpty()) {
+		while (!prefixQueue.isEmpty() && numMatches != k) {
+			while (matchesQueue.getHighest() > prefixQueue.peek().spx) {
+				// Add the result to the output
+				pb.progress(joinTime);
+				IntMatchingPair temp = matchesQueue.export();
+				results.add(
+						new MatchingPair(collection1.keys[temp.leftInd], collection2.keys[temp.rightInd], temp.score));
+				numMatches++;
+			}
 			PrefixEvent event = prefixQueue.poll();
 
 			double simThreshold = matchesQueue.getThreshold();
+			count = event.element; // Identifier of the probing set
+			double weightedThreshold = 2.0 / (collection1.weights[count] + 1) * simThreshold;
 
-			if (event.spx <= simThreshold) {
+			if (event.spx <= weightedThreshold) {
 				break;
 			}
 
-			count = event.element; // Identifier of the probing set
 			int[] x = collection1.sets[count]; // Probing set
 			px = event.prefix;
 			// spx = 1.0 - ((px - 1) / (1.0 * x.length));
-			minLength = (int) Math.ceil(x.length * simThreshold);
-			maxLength = (int) Math.ceil(x.length / simThreshold);
+			minLength = (int) Math.ceil(x.length * weightedThreshold);
+			maxLength = (int) Math.floor(x.length / weightedThreshold);
 
 			int w = x[px]; // Token to be examined
 
 			// Search the index for this token
-			for (int j = 0; j < idx[w].size(); j++) {
-				candidate = idx[w].get(j); // Identifier of the candidate set
-				int[] y = collection2.sets[candidate]; // Candidate set from the
-														// index
+			if (w > 0) {
+				for (int j = 0; j < idx[w].size(); j++) {
+					candidate = idx[w].get(j); // Identifier of the candidate set
+					int[] y = collection2.sets[candidate]; // Candidate set from the
+															// index
 
-				// Size filtering
-				if ((y.length >= minLength) && (y.length <= maxLength)) {
+					double doubleWeightedThreshold = 2.0 / (collection1.weights[count] + collection2.weights[candidate])
+							* simThreshold;
 
-					// Check pair against the hash table
-					if (!verified.contains(new Pair(count, candidate))) {
-						lx = x.length - (int) Math.ceil(simThreshold * x.length) + 1;
-						ly = y.length - (int) Math.ceil(simThreshold * y.length) + 1;
-						double sim = verification.verifyWithScore(x, y);
+					if (doubleWeightedThreshold > 1.0)
+						continue;
 
-						// Check if this pair should be hashed to avoid future
-						// re-verification
-						posx = 0; // The position of the second common token in
-									// a (the first constituent of the
-									// pair)
-						posy = 0; // The position of the second common token in
-									// b (the second constituent of the
-									// pair)
-						matches = 0;
+					// Size filtering
+					if ((y.length >= minLength) && (y.length <= maxLength)) {
 
-						for (posx = 0; posx < x.length; posx++) {
-							for (posy = 0; posy < y.length; posy++) {
-								if (x[posx] == y[posy]) {
-									matches += 1;
-									break;
+						// Check pair against the hash table
+						if (!verified.contains(new Pair(count, candidate))) {
+							lx = x.length - (int) Math.ceil(doubleWeightedThreshold * x.length) + 1;
+							ly = y.length - (int) Math.ceil(doubleWeightedThreshold * y.length) + 1;
+							double sim = verification.verifyWithScore(x, y);
+							sim = (collection1.weights[count] + collection2.weights[candidate]) / 2.0 * sim;
+
+							// Check if this pair should be hashed to avoid future
+							// re-verification
+							posx = 0; // The position of the second common token in
+										// a (the first constituent of the
+										// pair)
+							posy = 0; // The position of the second common token in
+										// b (the second constituent of the
+										// pair)
+							matches = 0;
+
+							for (posx = 0; posx < x.length; posx++) {
+								for (posy = 0; posy < y.length; posy++) {
+									if (x[posx] == y[posy]) {
+										matches += 1;
+										break;
+									}
 								}
+								if (matches == 2)
+									break;
 							}
-							if (matches == 2)
-								break;
-						}
 
-						// Pair is hashed to avoid recomputation
-						if ((posx <= lx) && (posy <= ly)) {
-							verified.add(new Pair(count, candidate));
-						}
+							// Pair is hashed to avoid recomputation
+							if ((posx <= lx) && (posy <= ly)) {
+								verified.add(new Pair(count, candidate));
+							}
 
-						if (sim >= simThreshold) {
-							matchesQueue.add(new IntMatchingPair(count, candidate, sim));
-							pb.progress(joinTime);
-							simThreshold = matchesQueue.getThreshold();
+							if (sim >= simThreshold) {
+								matchesQueue.add(new IntMatchingPair(count, candidate, sim));
+								simThreshold = matchesQueue.getThreshold();
+							}
 						}
 					}
+
 				}
-
 			}
-
 			// Push the next token as a new event into the queue
-			if (!event.update() && event.spx >= simThreshold)
+			if (!event.update() && event.spx >= simThreshold && weightedThreshold < 1.0)
 				prefixQueue.add(event);
 		}
 
 		while (!matchesQueue.isEmpty()) {
 			// Add the result to the output
+			pb.progress(joinTime);
 			IntMatchingPair temp = matchesQueue.export();
-			results.add(new MatchingPair(collection1.keys[temp.leftInd], collection2.keys[temp.rightInd], temp.score));
+			if (results != null)
+				results.add(
+						new MatchingPair(collection1.keys[temp.leftInd], collection2.keys[temp.rightInd], temp.score));
 			numMatches++;
 		}
 
@@ -446,22 +483,26 @@ public class TopKJoin {
 		logger.info("Right Size: " + collection2.sets.length);
 		logger.info("Join algorithm time: " + joinTime / 1000000000.0 + " sec.");
 		logger.info("Number of matches: " + numMatches);
+		if (results == null)
+			System.out.println("Total Matches: " + numMatches);
 	}
 
 	private class PrefixEvent implements Comparable<PrefixEvent> {
 		public int element, length, prefix;
-		public double spx;
+		public double spx, ratio;
 
-		public PrefixEvent(int element, int length) {
+		public PrefixEvent(int element, int length, double weight) {
 			this.element = element;
 			this.length = length;
 			this.prefix = 0;
-			this.spx = 1.0;
+			this.ratio = (weight + 1) / 2.0;
+			this.spx = this.ratio;
 		}
 
 		public boolean update() {
 			prefix++;
-			spx -= 1.0 / length;
+//			spx -= ratio / length;
+			spx = ratio * (1 - (prefix - 1.0) / length);
 			return prefix == length;
 		}
 
@@ -522,6 +563,12 @@ public class TopKJoin {
 			if (Q.isEmpty())
 				return 0.0;
 			return Q.first().score;
+		}
+
+		public double getHighest() {
+			if (Q.isEmpty())
+				return 0.0;
+			return Q.last().score;
 		}
 
 		public boolean isEmpty() {

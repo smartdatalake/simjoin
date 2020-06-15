@@ -8,6 +8,8 @@
     "column_delimiter":";",
     "token_delimiter":",",
     "header":"false",
+    "tokenizer":"word",
+    "qgram":3,
     "output_file":"out.txt",
     "mode":"standard",
     "join_type":"threshold",

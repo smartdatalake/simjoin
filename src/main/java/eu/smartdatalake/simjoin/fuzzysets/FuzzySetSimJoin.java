@@ -3,6 +3,9 @@ package eu.smartdatalake.simjoin.fuzzysets;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import eu.smartdatalake.simjoin.ISimJoin;
 import eu.smartdatalake.simjoin.MatchingPair;
 import eu.smartdatalake.simjoin.fuzzysets.alg.KNNJoin;
@@ -16,38 +19,43 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 	public final static int TYPE_THRESHOLD = 0;
 	public final static int TYPE_KNN = 1;
 	public final static int TYPE_TOPK = 2;
+	private static final Logger logger = LogManager.getLogger(FuzzySetSimJoin.class);
 
 	int type;
 	GroupCollection<ArrayList<String>> collection1;
 	GroupCollection<ArrayList<String>> collection2;
 	double threshold;
+	double limitThreshold;
 	ConcurrentLinkedQueue<MatchingPair> results;
 
-	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection, double threshold,
-			ConcurrentLinkedQueue<MatchingPair> results) {
-		super();
-		this.type = type;
-		this.collection1 = collection;
-		this.collection2 = null;
-		this.threshold = threshold;
-		this.results = results;
-	}
-
 	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection1,
-			GroupCollection<ArrayList<String>> collection2, double threshold,
+			GroupCollection<ArrayList<String>> collection2, double threshold, double limitThreshold,
 			ConcurrentLinkedQueue<MatchingPair> results) {
 		super();
 		this.type = type;
 		this.collection1 = collection1;
 		this.collection2 = collection2;
 		this.threshold = threshold;
+		this.limitThreshold = limitThreshold;
 		this.results = results;
 	}
-
-	public FuzzySetSimJoin() {
-		super();
+	
+	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection, double threshold,
+			ConcurrentLinkedQueue<MatchingPair> results) {
+		this(type, collection, null, threshold, 0.0, results);
 	}
 
+	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection1,
+			GroupCollection<ArrayList<String>> collection2, double threshold,
+			ConcurrentLinkedQueue<MatchingPair> results) {
+		this(type, collection1, collection2, threshold, 0.0, results);
+	}
+	
+	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection, double threshold, double limitThreshold,
+			ConcurrentLinkedQueue<MatchingPair> results) {
+		this(type, collection, null, threshold, limitThreshold, results);
+	}
+	
 	public void thresholdJoin(GroupCollection<ArrayList<String>> collection, double threshold,
 			ConcurrentLinkedQueue<MatchingPair> results) {
 
@@ -60,7 +68,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		joinAlg.selfJoin(transformedCollection, threshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void thresholdJoin(GroupCollection<ArrayList<String>> collection1,
@@ -78,10 +86,10 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		joinAlg.join(transformedCollection1, transformedCollection2, threshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
-	public void knnJoin(GroupCollection<ArrayList<String>> collection, int k,
+	public void knnJoin(GroupCollection<ArrayList<String>> collection, int k, double limitThreshold,
 			ConcurrentLinkedQueue<MatchingPair> results) {
 
 		// Preprocess the input collection
@@ -90,14 +98,14 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		// Execute the join
 		long duration = System.nanoTime();
 		KNNJoin joinAlg = new KNNJoin();
-		joinAlg.selfJoin(transformedCollection, k, results);
+		joinAlg.selfJoin(transformedCollection, k, limitThreshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void knnJoin(GroupCollection<ArrayList<String>> collection1, GroupCollection<ArrayList<String>> collection2,
-			int k, ConcurrentLinkedQueue<MatchingPair> results) {
+			int k, double limitThreshold, ConcurrentLinkedQueue<MatchingPair> results) {
 
 		// Preprocess the input collections
 		FuzzyIntSetCollection[] transformedCollections = preprocess(collection1, collection2);
@@ -107,10 +115,10 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		// Execute the join
 		long duration = System.nanoTime();
 		KNNJoin joinAlg = new KNNJoin();
-		joinAlg.join(transformedCollection1, transformedCollection2, k, results);
+		joinAlg.join(transformedCollection1, transformedCollection2, k, limitThreshold, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void topkJoin(GroupCollection<ArrayList<String>> collection, int k,
@@ -125,7 +133,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		joinAlg.selfJoin(transformedCollection, k, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	public void topkJoin(GroupCollection<ArrayList<String>> collection1, GroupCollection<ArrayList<String>> collection2,
@@ -142,7 +150,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		joinAlg.join(transformedCollection1, transformedCollection2, k, results);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Join time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Join time: " + duration / 1000000000.0 + " sec.");
 	}
 
 	private FuzzyIntSetCollection preprocess(GroupCollection<ArrayList<String>> collection) {
@@ -153,8 +161,8 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		FuzzyIntSetCollection transformedCollection = transformer.transformCollection(collection, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Transform time: " + duration / 1000000000.0 + " sec.");
-		System.out.println("Collection size: " + transformedCollection.sets.length);
+		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Collection size: " + transformedCollection.sets.length);
 
 		return transformedCollection;
 	}
@@ -169,9 +177,9 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		FuzzyIntSetCollection transformedCollection1 = transformer.transformCollection(collection1, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
-		System.out.println("Transform time: " + duration / 1000000000.0 + " sec.");
-		System.out.println("Left collection size: " + transformedCollection1.sets.length);
-		System.out.println("Right collection size: " + transformedCollection2.sets.length);
+		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
+		logger.info("Left collection size: " + transformedCollection1.sets.length);
+		logger.info("Right collection size: " + transformedCollection2.sets.length);
 
 		return new FuzzyIntSetCollection[] { transformedCollection1, transformedCollection2 };
 	}
@@ -188,9 +196,9 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 			break;
 		case TYPE_KNN:
 			if (collection2 == null) {
-				knnJoin(collection1, (int) threshold, results);
+				knnJoin(collection1, (int) threshold, limitThreshold, results);
 			} else {
-				knnJoin(collection1, collection2, (int) threshold, results);
+				knnJoin(collection1, collection2, (int) threshold, limitThreshold, results);
 			}
 			break;
 		case TYPE_TOPK:
@@ -203,5 +211,6 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		default:
 			break;
 		}
+		logger.info("Parameter: "+threshold);
 	}
 }

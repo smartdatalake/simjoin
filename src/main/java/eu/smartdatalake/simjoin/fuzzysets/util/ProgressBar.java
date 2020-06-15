@@ -1,5 +1,8 @@
 package eu.smartdatalake.simjoin.fuzzysets.util;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 //import java.text.DecimalFormat;
 
 public class ProgressBar {
@@ -8,6 +11,7 @@ public class ProgressBar {
 	public int len;
 	public int count;
 	// private DecimalFormat etaFormat;
+	private static final Logger logger = LogManager.getLogger(ProgressBar.class);
 
 	public ProgressBar(int totalSteps, int len) {
 		this.totalSteps = totalSteps;
@@ -37,9 +41,11 @@ public class ProgressBar {
 				 * "s \t\tETA: " + (int) (eta / 60.0) + "m " + (int) (eta %
 				 * 60.0) + "s\r");
 				 */
-				System.out.print((count / step * 100) / totalSteps + "% \tElapsed: " + (int) (elapsed / 60.0) + "m "
+				String msg = (count / step * 100) / totalSteps + "% \tElapsed: " + (int) (elapsed / 60.0) + "m "
 						+ (int) (elapsed % 60.0) + "s \t\tETA: " + (int) (eta / 60.0) + "m " + (int) (eta % 60.0)
-						+ "s\r");
+						+ "s\r";
+//				logger.info(msg);
+				System.out.print(msg);
 			}
 		}
 	}

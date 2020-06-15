@@ -1,6 +1,8 @@
 package eu.smartdatalake.simjoin.fuzzysets.util;
 
 import eu.smartdatalake.simjoin.fuzzysets.FuzzyIntSetCollection;
+import gnu.trove.list.TIntList;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;
@@ -14,7 +16,8 @@ public class FuzzySetIndex {
 
 	public TIntObjectMap<TIntSet>[] idx;
 	public int[] costs;
-
+	public TIntList[] lengths;
+	
 	@SuppressWarnings("unchecked")
 	public FuzzySetIndex(FuzzyIntSetCollection collection) {
 
@@ -23,8 +26,10 @@ public class FuzzySetIndex {
 
 		// initialize the index
 		idx = new TIntObjectHashMap[numTokens];
+		lengths = new TIntList[numTokens];
 		for (int i = 0; i < idx.length; i++) {
 			idx[i] = new TIntObjectHashMap<TIntSet>();
+			lengths[i] = new TIntArrayList();
 		}
 		costs = new int[idx.length];
 
@@ -52,6 +57,8 @@ public class FuzzySetIndex {
 				total += idx[tok].get(S).size();
 			}
 			costs[tok] = total;
+			lengths[tok].addAll(idx[tok].keys());
+			lengths[tok].sort();
 		}
 	}
 }

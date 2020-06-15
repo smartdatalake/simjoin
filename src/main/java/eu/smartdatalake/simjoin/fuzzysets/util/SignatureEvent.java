@@ -1,7 +1,5 @@
 package eu.smartdatalake.simjoin.fuzzysets.util;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.PriorityQueue;
 
 import eu.smartdatalake.simjoin.fuzzysets.util.TokenScore;
@@ -51,7 +49,10 @@ public class SignatureEvent {
 		tokenScores = new PriorityQueue<TokenScore>();
 		// then include costs
 		for (int token : tokenScores2.keys()) {
-			tokenScores.add(new TokenScore(token, costs[token] / tokenScores2.get(token)));
+			int cost = 0;
+			if (token > 0)
+				cost = costs[token];
+			tokenScores.add(new TokenScore(token, cost / tokenScores2.get(token)));
 		}
 	}
 
@@ -62,6 +63,8 @@ public class SignatureEvent {
 
 		// construct the signature
 		while (simUpperBound >= thres) {
+			if(tokenScores.isEmpty())
+				break;
 			bestToken = tokenScores.poll().id;
 			// update the signature
 			for (int i = 0; i < querySet.length; i++) {
@@ -82,6 +85,7 @@ public class SignatureEvent {
 					/ (double) querySet[id_r].length;
 		}
 	}
+
 }
 
 class TokenScore implements Comparable<TokenScore> {
