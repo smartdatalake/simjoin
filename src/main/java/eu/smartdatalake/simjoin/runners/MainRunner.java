@@ -18,39 +18,45 @@ import org.apache.logging.log4j.core.LoggerContext;
  */
 public class MainRunner {
 	private static final Logger logger = LogManager.getLogger(MainRunner.class);
+
 	public static void main(String[] args) {
-		long duration = System.nanoTime();
-		try {
-			String configFile = args.length > 0 ? args[0] : "config.json";
 
-			/* READ PARAMETERS */
-			JSONParser jsonParser = new JSONParser();
-			JSONObject config = (JSONObject) jsonParser.parse(new FileReader(configFile));
+		if (args.length > 0 && args[0].equals("--service"))
+			new RunService(args);
+		else {
+			long duration = System.nanoTime();
+			try {
+				String configFile = args.length > 0 ? args[0] : "config.json";
 
-			String logFile = String.valueOf(config.get("log_file"));
-			System.setProperty("logFilename", logFile);
-			LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-			ctx.reconfigure();
-			
-			// operation
-			String mode = String.valueOf(config.get("mode"));
+				/* READ PARAMETERS */
+				JSONParser jsonParser = new JSONParser();
+				JSONObject config = (JSONObject) jsonParser.parse(new FileReader(configFile));
 
-			if (mode.equalsIgnoreCase("standard")) {
-				RunSetSimJoin runner = new RunSetSimJoin();
-				runner.execute(config);
-			} else if (mode.equalsIgnoreCase("fuzzy")) {
-				RunFuzzySetSimJoin runner = new RunFuzzySetSimJoin();
-				runner.execute(config);
-			} else {
-				logger.error("Unknown mode");
+				String logFile = String.valueOf(config.get("log_file"));
+				System.setProperty("logFilename", logFile);
+				LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+				ctx.reconfigure();
+
+				// operation
+				String mode = String.valueOf(config.get("mode"));
+
+				if (mode.equalsIgnoreCase("standard")) {
+					RunSetSimJoin runner = new RunSetSimJoin();
+					runner.execute(config);
+				} else if (mode.equalsIgnoreCase("fuzzy")) {
+					RunFuzzySetSimJoin runner = new RunFuzzySetSimJoin();
+					runner.execute(config);
+				} else {
+					logger.error("Unknown mode");
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (ParseException e) {
+				e.printStackTrace();
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ParseException e) {
-			e.printStackTrace();
+			duration = System.nanoTime() - duration;
+			System.out.println("Total Join algorithm time: " + duration / 1000000000.0 + " sec.");
+			logger.info("Total Join algorithm time: " + duration / 1000000000.0 + " sec.");
 		}
-		duration = System.nanoTime() - duration;
-		System.out.println("Total Join algorithm time: " + duration / 1000000000.0 + " sec.");
-		logger.info("Total Join algorithm time: " + duration / 1000000000.0 + " sec.");
 	}
 }
