@@ -27,6 +27,12 @@ public class ThresholdJoin {
 	protected int totalCandidates = 0, totalCheckFilterCandidates = 0, totalNNFilterCandidates = 0, totalMatches = 0,
 			totalElements = 0, weightedSets = 0, weightedCandidates = 0;
 	private static final Logger logger = LogManager.getLogger(ThresholdJoin.class);
+	private long timeout;
+	
+	public ThresholdJoin(long timeout) {
+		this.timeout = timeout;
+	}
+	
 
 	/**
 	 * Implements threshold-based self-join.
@@ -63,6 +69,8 @@ public class ThresholdJoin {
 		joinTime = System.nanoTime();
 
 		for (int i = 0; i < collection1.sets.length; i++) {
+			if (timeout > 0 && joinTime > timeout)
+				return;
 			// progress bar
 			pb.progress(joinTime);
 

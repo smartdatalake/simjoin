@@ -20,6 +20,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 	public final static int TYPE_KNN = 1;
 	public final static int TYPE_TOPK = 2;
 	private static final Logger logger = LogManager.getLogger(FuzzySetSimJoin.class);
+	public long timeout;
 
 	int type;
 	GroupCollection<ArrayList<String>> collection1;
@@ -64,7 +65,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 
 		// Execute the join
 		long duration = System.nanoTime();
-		ThresholdJoin joinAlg = new ThresholdJoin();
+		ThresholdJoin joinAlg = new ThresholdJoin(timeout);
 		joinAlg.selfJoin(transformedCollection, threshold, results);
 		duration = System.nanoTime() - duration;
 
@@ -82,7 +83,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 
 		// Execute the join
 		long duration = System.nanoTime();
-		ThresholdJoin joinAlg = new ThresholdJoin();
+		ThresholdJoin joinAlg = new ThresholdJoin(timeout);
 		joinAlg.join(transformedCollection1, transformedCollection2, threshold, results);
 		duration = System.nanoTime() - duration;
 
@@ -97,7 +98,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 
 		// Execute the join
 		long duration = System.nanoTime();
-		KNNJoin joinAlg = new KNNJoin();
+		KNNJoin joinAlg = new KNNJoin(timeout);
 		joinAlg.selfJoin(transformedCollection, k, limitThreshold, results);
 		duration = System.nanoTime() - duration;
 
@@ -114,7 +115,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 
 		// Execute the join
 		long duration = System.nanoTime();
-		KNNJoin joinAlg = new KNNJoin();
+		KNNJoin joinAlg = new KNNJoin(timeout);
 		joinAlg.join(transformedCollection1, transformedCollection2, k, limitThreshold, results);
 		duration = System.nanoTime() - duration;
 
@@ -129,7 +130,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 
 		// Execute the join
 		long duration = System.nanoTime();
-		TopKJoin joinAlg = new TopKJoin();
+		TopKJoin joinAlg = new TopKJoin(timeout);
 		joinAlg.selfJoin(transformedCollection, k, results);
 		duration = System.nanoTime() - duration;
 
@@ -146,7 +147,7 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 
 		// Execute the join
 		long duration = System.nanoTime();
-		TopKJoin joinAlg = new TopKJoin();
+		TopKJoin joinAlg = new TopKJoin(timeout);
 		joinAlg.join(transformedCollection1, transformedCollection2, k, results);
 		duration = System.nanoTime() - duration;
 

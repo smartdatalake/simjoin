@@ -1,0 +1,16 @@
+{
+    "dataSource": "jdbc",
+    "mode":"standard",
+
+    "url": "jdbc:postgresql://localhost:5432/SDL",
+    "user": "username",
+    "pwd": "pwd",	
+    "db": "dbName",
+
+    "keyCol": "keyColName",
+    "tokensCol": "tokenColName"
+
+    "tokenizer":"word",
+    "qgram":3,
+    "token_delimiter":";",
+}

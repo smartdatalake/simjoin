@@ -4,8 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -14,6 +14,9 @@ import org.apache.logging.log4j.Logger;
 
 import eu.smartdatalake.simjoin.Group;
 import eu.smartdatalake.simjoin.GroupCollection;
+import eu.smartdatalake.simjoin.data.DataCSVSource;
+import eu.smartdatalake.simjoin.data.DataFileReader;
+import eu.smartdatalake.simjoin.data.DataJDBCSource;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
@@ -23,23 +26,16 @@ import gnu.trove.map.hash.TObjectIntHashMap;
  */
 public class TokenSetCollectionReader {
 
+	private static final Logger logger = LogManager.getLogger(TokenSetCollectionReader.class);
+
 	/**
 	 * Creates a {@link GroupCollection} from a CSV file.
 	 * 
-	 * @param file         Path to a CSV file.
-	 * @param colSetId     The column containing the set identifiers.
-	 * @param colSetTokens The column containing the set tokens.
-	 * @param colWeights   The column containing the set weights.
-	 * @param colDelimiter The column delimiter.
-	 * @param tokDelimiter The token delimiter.
-	 * @param maxLines     Number of lines to import (for debugging purposes).
-	 * @param header       Whether the CSV file contains a header.
+	 * @param ds       {@link DataCSVSource} Source to use for the data.
+	 * @param maxLines Number of lines to parse from the file.
 	 * @return A {@link GroupCollection}.
 	 */
-	private static final Logger logger = LogManager.getLogger(TokenSetCollectionReader.class);
-
-	public GroupCollection<String> fromCSV(String file, int colSetId, int colSetTokens, int colWeights,
-			String colDelimiter, String tokDelimiter, int maxLines, boolean header, String tokenizer, int qgram) {
+	public static GroupCollection<String> fromCSV(DataCSVSource ds, int maxLines) {
 
 		GroupCollection<String> collection = new GroupCollection<String>();
 		collection.groups = new ArrayList<Group<String>>();
@@ -47,56 +43,37 @@ public class TokenSetCollectionReader {
 		double minWeight = Double.MAX_VALUE, maxWeight = Double.MIN_VALUE;
 
 		try {
-			BufferedReader br = new BufferedReader(new FileReader(file));
+			DataFileReader dr = new DataFileReader(ds.file);
 			String line;
 			String[] columns;
 			Group<String> set;
 
 			// if the file has header, ignore the first line
-			if (header) {
-				br.readLine();
+			if (ds.header) {
+				dr.readLine();
 			}
 
-			while ((line = br.readLine()) != null) {
+			while ((line = dr.readLine()) != null) {
 				if (maxLines > 0 && lineCount >= maxLines) {
 					break;
 				}
 				try {
-					columns = line.split(colDelimiter);
+					columns = line.split(ds.columnDelimiter);
 					set = new Group<String>();
-					set.id = columns[colSetId];
-					set.elements = new ArrayList<String>();
-					set.weight = (colWeights == -1) ? 1.0 : Double.parseDouble(columns[colWeights]);
-					if (set.weight >= maxWeight)
-						maxWeight = set.weight;
-					if (set.weight <= minWeight)
-						minWeight = set.weight;
+					set.id = columns[ds.colSetId];
 
-					TObjectIntMap<String> tokens = new TObjectIntHashMap<String>();
-					
-					if (tokenizer.equals("qgram")) {
-						String token = columns[colSetTokens];
-						for (int i=0; i<=token.length()-qgram; i++) {
-							tokens.adjustOrPutValue(token.substring(i, i+qgram), 1, 0);
-						}
-					} else {
-						for (String tok: Arrays.asList(columns[colSetTokens].split(tokDelimiter))) {
-							tokens.adjustOrPutValue(tok, 1, 0);
-						}
-					}
+					set.weight = (ds.colWeights == -1) ? 1.0 : Double.parseDouble(columns[ds.colWeights]);
+					maxWeight = (set.weight > maxWeight) ? set.weight : maxWeight;
+					minWeight = (set.weight < minWeight) ? set.weight : minWeight;
 
-					for (String key: tokens.keySet()) {
-						for (int val=0; val<=tokens.get(key); val++) {
-							set.elements.add(key+"@"+val);
-						}
-					}
+					set.elements = getTokens(columns[ds.colSetTokens], ds.tokenizer, ds.qgram, ds.tokenDelimiter);
 					collection.groups.add(set);
 					lineCount++;
 				} catch (Exception e) {
 					errorLines++;
 				}
 			}
-			br.close();
+			dr.close();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -106,14 +83,89 @@ public class TokenSetCollectionReader {
 		double elementsPerSet = 0;
 		for (Group<String> set : collection.groups) {
 			elementsPerSet += set.elements.size();
-			if (colWeights != -1)
+			if (ds.colWeights != -1)
 				set.weight = (set.weight - minWeight) / (maxWeight - minWeight);
 		}
 		elementsPerSet /= collection.groups.size();
 
+		System.out.println("Finished reading file. Lines read: " + lineCount + ". Lines skipped due to errors: "
+				+ errorLines + ". Num of sets: " + collection.groups.size() + ". Elements per set: " + elementsPerSet);
 		logger.info("Finished reading file. Lines read: " + lineCount + ". Lines skipped due to errors: " + errorLines
 				+ ". Num of sets: " + collection.groups.size() + ". Elements per set: " + elementsPerSet);
 
 		return collection;
+	}
+
+	/**
+	 * Creates a {@link GroupCollection} from a CSV file.
+	 * 
+	 * @param ds       {@link DataJDBCSource} Source to use for the data.
+	 * @param maxLines Number of lines to retrieve from the Database.
+	 * @return A {@link GroupCollection}.
+	 */
+	public static GroupCollection<String> fromJDBC(DataJDBCSource ds, int maxLines) {
+
+		ResultSet resultSet = ds.executeStatement(maxLines);
+
+		GroupCollection<String> collection = new GroupCollection<String>();
+		collection.groups = new ArrayList<Group<String>>();
+		int lines = 0;
+		double minWeight = Double.MAX_VALUE, maxWeight = Double.MIN_VALUE;
+
+		try {
+			while (resultSet.next()) {
+				Group<String> set = new Group<String>();
+				set.id = resultSet.getString(1);
+				set.weight = (!ds.existsWeight()) ? 1.0 : Double.parseDouble(resultSet.getString(3));
+				maxWeight = (set.weight > maxWeight) ? set.weight : maxWeight;
+				minWeight = (set.weight < minWeight) ? set.weight : minWeight;
+
+				set.elements = getTokens(resultSet.getString(2), ds.tokenizer, ds.qgram, ds.tokenDelimiter);
+				collection.groups.add(set);
+				lines++;
+			}
+			double elementsPerSet = 0;
+			for (Group<String> set : collection.groups) {
+				elementsPerSet += set.elements.size();
+				if (ds.existsWeight())
+					set.weight = (set.weight - minWeight) / (maxWeight - minWeight);
+			}
+			elementsPerSet /= collection.groups.size();
+
+			System.out.println("Finished quering DB. Lines read: " + lines + ". Num of sets: " + collection.groups.size()
+					+ ". Elements per set: " + elementsPerSet);
+			logger.info("Finished quering DB. Lines read: " + lines + ". Num of sets: " + collection.groups.size()
+					+ ". Elements per set: " + elementsPerSet);
+
+			return collection;
+		} catch (NumberFormatException | SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private static ArrayList<String> getTokens(String line, String tokenizer, int qgram, String tokenDelimiter) {
+
+		TObjectIntMap<String> tokens = new TObjectIntHashMap<String>();
+		if (tokenizer.equals("qgram")) {
+			String token = line;
+			for (int i = 0; i <= token.length() - qgram; i++) {
+				tokens.adjustOrPutValue(token.substring(i, i + qgram), 1, 0);
+			}
+		} else {
+			for (String tok : Arrays.asList(line.split(tokenDelimiter))) {
+				tokens.adjustOrPutValue(tok, 1, 0);
+			}
+		}
+
+		ArrayList<String> tokens2 = new ArrayList<String>();
+		for (String key : tokens.keySet()) {
+			for (int val = 0; val <= tokens.get(key); val++) {
+				tokens2.add(key + "@" + val);
+			}
+		}
+
+		return tokens2;
 	}
 }

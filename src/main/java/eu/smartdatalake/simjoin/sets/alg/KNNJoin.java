@@ -6,9 +6,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import eu.smartdatalake.simjoin.sets.IntSetCollection;
 import eu.smartdatalake.simjoin.MatchingPair;
 import eu.smartdatalake.simjoin.fuzzysets.util.ProgressBar;
+import eu.smartdatalake.simjoin.sets.IntSetCollection;
 import gnu.trove.list.TDoubleList;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TDoubleArrayList;
@@ -22,7 +22,12 @@ import gnu.trove.set.hash.TIntHashSet;
  */
 public class KNNJoin {
 	private static final Logger logger = LogManager.getLogger(KNNJoin.class);
+	private long timeout;
 
+	public KNNJoin(long timeout) {
+		this.timeout = timeout;
+	}
+	
 	/**
 	 * Implements kNN self-join.
 	 * 
@@ -43,7 +48,7 @@ public class KNNJoin {
 	 * @param collection1 The left collection.
 	 * @param collection2 The right collection.
 	 * @param k           The number of nearest neighbors to return for each group.
-	 * @param limitThreshold           A threshold for neighbors to avoid low-scores.	
+	 * @param limitThreshold A threshold for neighbors to avoid low-scores.
 	 * @param results     The queue to which the results are added.
 	 */
 	public void join(IntSetCollection collection1, IntSetCollection collection2, int k, double limitThreshold,
@@ -82,6 +87,8 @@ public class KNNJoin {
 		long joinTime = System.nanoTime();
 		int count = 0;
 		for (int[] r : collection1.sets) {
+			if (timeout > 0 && joinTime > timeout)
+				return;
 			pb.progress(joinTime);
 
 			TIntList matches = new TIntArrayList();

@@ -6,6 +6,8 @@ import eu.smartdatalake.simjoin.sets.IntSet;
 import eu.smartdatalake.simjoin.sets.IntSetCollection;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.set.TIntSet;
+import gnu.trove.set.hash.TIntHashSet;
 
 /**
  * Represents a collection of fuzzy sets with integer tokens.

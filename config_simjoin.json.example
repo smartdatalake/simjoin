@@ -1,0 +1,8 @@
+{
+    "max_lines":"10000",
+    "output_file":"outputFileName",
+    "log_file":"logFileName",
+    "join_type":"knn",
+    "threshold":"0.2",
+    "k":"5",
+}

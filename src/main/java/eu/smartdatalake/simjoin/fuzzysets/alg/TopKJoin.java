@@ -14,8 +14,6 @@ import eu.smartdatalake.simjoin.sets.IntSetCollection;
 import eu.smartdatalake.simjoin.fuzzysets.util.FuzzySetIndex;
 import eu.smartdatalake.simjoin.fuzzysets.util.ProgressBar;
 import eu.smartdatalake.simjoin.fuzzysets.util.SignatureEvent;
-import gnu.trove.map.TIntObjectMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 
@@ -25,7 +23,13 @@ import gnu.trove.set.hash.TIntHashSet;
  */
 public class TopKJoin extends KNNJoin {
 	private static final Logger logger = LogManager.getLogger(TopKJoin.class);
-
+	long timeout;
+	
+	public TopKJoin(long timeout) {
+		super(-1);
+		this.timeout = timeout;
+	}
+	
 	/**
 	 * Implements top-k self-join.
 	 * 
@@ -64,7 +68,7 @@ public class TopKJoin extends KNNJoin {
 		logger.info("Flattened both collections");
 
 		ConcurrentLinkedQueue<MatchingPair> results2 = new ConcurrentLinkedQueue<MatchingPair>();
-		eu.smartdatalake.simjoin.sets.alg.TopKJoin joinAlg = new eu.smartdatalake.simjoin.sets.alg.TopKJoin();
+		eu.smartdatalake.simjoin.sets.alg.TopKJoin joinAlg = new eu.smartdatalake.simjoin.sets.alg.TopKJoin(-1);
 		if (!self)
 			joinAlg.join(flattenedTransformedCollection1, flattenedTransformedCollection2, k, results2);
 		else
@@ -184,6 +188,8 @@ public class TopKJoin extends KNNJoin {
 		joinTime = System.nanoTime();
 		ProgressBar pb = new ProgressBar(k);
 		while (totalMatches != k) {
+			if (timeout > 0 && joinTime > timeout)
+				return;
 			if (candidatePairs.isEmpty() || (resultPairs.first().score >= candidatePairs.peek().score)) {
 				FuzzyKIntMatchingPair cm = resultPairs.pollFirst();
 				if (results != null)

@@ -21,7 +21,12 @@ public class ThresholdJoin {
 
 	int weightedSets = 0, weightedCandidates = 0, totalCandidates = 0;
 	private static final Logger logger = LogManager.getLogger(ThresholdJoin.class);
-
+	private long timeout;
+	
+	public ThresholdJoin(long timeout) {
+		this.timeout = timeout;
+	}
+	
 	/**
 	 * Implements threshold-based self-join.
 	 * 
@@ -53,6 +58,8 @@ public class ThresholdJoin {
 		ProgressBar pb = new ProgressBar(collection.sets.length);
 
 		for (int[] r : collection.sets) {
+			if (timeout > 0 && joinTime > timeout)
+				return;
 			pb.progress(joinTime);
 
 			double weightedThreshold = 2.0 / (collection.weights[count] + 1) * threshold;
@@ -200,6 +207,8 @@ public class ThresholdJoin {
 		int count = 0;
 		int rLen = 0, sLen = 0;
 		for (int[] r : collection1.sets) {
+			if (timeout > 0 && joinTime > timeout)
+				return;
 			pb.progress(joinTime);
 
 			int minLength, maxLength, candidate, eqoverlap, rPrefixLength, sPrefixLength;

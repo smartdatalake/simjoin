@@ -1,0 +1,15 @@
+{
+    "dataSource": "csv",
+    "mode":"fuzzy",
+
+    "file":"localPath",
+
+    "colSetId":"1",
+    "colSetTokens":"2",
+    "columnDelimiter":",",
+    "header":"true"
+
+    "tokenizer":"word",
+    "qgram":3,
+    "tokenDelimiter":";",
+}

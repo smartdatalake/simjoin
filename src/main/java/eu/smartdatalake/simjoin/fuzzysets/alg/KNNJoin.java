@@ -17,8 +17,6 @@ import eu.smartdatalake.simjoin.fuzzysets.util.SignatureEvent;
 import eu.smartdatalake.simjoin.sets.IntSetCollection;
 import eu.smartdatalake.simjoin.sets.alg.Verification;
 import gnu.trove.list.TIntList;
-import gnu.trove.map.TIntObjectMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import eu.smartdatalake.simjoin.MatchingPair;
@@ -31,7 +29,13 @@ import eu.smartdatalake.simjoin.MatchingPair;
 public class KNNJoin extends ThresholdJoin {
 	private static final Logger logger = LogManager.getLogger(KNNJoin.class);
 	protected long initializingTime = 0, candidateTime = 0;
+	private long timeout;
 
+	public KNNJoin(long timeout) {
+		super(-1);
+		this.timeout = timeout;
+	}
+	
 	/**
 	 * Implements kNN self-join.
 	 * 
@@ -78,7 +82,7 @@ public class KNNJoin extends ThresholdJoin {
 				flattenedTransformedCollection2 = collection2.flatten();
 
 			ConcurrentLinkedQueue<MatchingPair> results2 = new ConcurrentLinkedQueue<MatchingPair>();
-			eu.smartdatalake.simjoin.sets.alg.KNNJoin joinAlg = new eu.smartdatalake.simjoin.sets.alg.KNNJoin();
+			eu.smartdatalake.simjoin.sets.alg.KNNJoin joinAlg = new eu.smartdatalake.simjoin.sets.alg.KNNJoin(-1);
 			joinAlg.join(flattenedTransformedCollection1, flattenedTransformedCollection2, k, limitThreshold, results2);
 
 			for (int i = 0; i < knnResults.length; i++) {
@@ -101,6 +105,8 @@ public class KNNJoin extends ThresholdJoin {
 
 		ProgressBar pb = new ProgressBar(collection1.sets.length);
 		for (int i = 0; i < collection1.sets.length; i++) {
+			if (timeout > 0 && System.nanoTime() - joinTime > timeout)
+				return;
 			// progress bar
 			pb.progress(joinTime);
 

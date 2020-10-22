@@ -26,26 +26,26 @@ public class ProgressBar {
 	}
 
 	public void progress(long time) {
-
-		count++;
-		if (len >= totalSteps) {
-			if (count % step == 0) {
-				long now = System.nanoTime();
-				double elapsed = (now - time) / 1000000000.0;
-				double eta = (elapsed * step * totalSteps) / count - elapsed;
-				/*
-				 * System.out.print("|" + StringUtils.repeat("=", count / step)
-				 * + StringUtils.repeat(" ", totalSteps - count / step) + "|" +
-				 * (count / step * 100) / totalSteps + "% \tElapsed: " + (int)
-				 * (elapsed / 60.0) + "m " + (int) (elapsed % 60.0) +
-				 * "s \t\tETA: " + (int) (eta / 60.0) + "m " + (int) (eta %
-				 * 60.0) + "s\r");
-				 */
-				String msg = (count / step * 100) / totalSteps + "% \tElapsed: " + (int) (elapsed / 60.0) + "m "
-						+ (int) (elapsed % 60.0) + "s \t\tETA: " + (int) (eta / 60.0) + "m " + (int) (eta % 60.0)
-						+ "s\r";
-//				logger.info(msg);
-				System.out.print(msg);
+		if (len > 100) {
+			count++;
+			if (len >= totalSteps) {
+				if (count % step == 0) {
+					long now = System.nanoTime();
+					double elapsed = (now - time) / 1000000000.0;
+					double eta = (elapsed * step * totalSteps) / count - elapsed;
+					/*
+					 * System.out.print("|" + StringUtils.repeat("=", count / step) +
+					 * StringUtils.repeat(" ", totalSteps - count / step) + "|" + (count / step *
+					 * 100) / totalSteps + "% \tElapsed: " + (int) (elapsed / 60.0) + "m " + (int)
+					 * (elapsed % 60.0) + "s \t\tETA: " + (int) (eta / 60.0) + "m " + (int) (eta %
+					 * 60.0) + "s\r");
+					 */
+					String msg = String.format("%d%% \tElapsed: %dm %ds  \t\tETA: %dm %ds\r",
+							(count / step * 100) / totalSteps, (int) (elapsed / 60.0), (int) (elapsed % 60.0),
+							(int) (eta / 60.0), (int) (eta % 60.0));
+//					logger.info(msg);
+					System.out.print(msg);
+				}
 			}
 		}
 	}

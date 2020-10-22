@@ -27,6 +27,11 @@ public class TopKJoin {
 
 	boolean optimizedInit = false;
 	private static final Logger logger = LogManager.getLogger(TopKJoin.class);
+	private long timeout;
+	
+	public TopKJoin(long timeout) {
+		this.timeout = timeout;
+	}
 
 	/**
 	 * Implements top-k self-join.
@@ -125,6 +130,8 @@ public class TopKJoin {
 		ProgressBar pb = new ProgressBar(k);
 		// Consume items from the priority queue of events
 		while (!prefixQueue.isEmpty() && numMatches != k) {
+			if (timeout > 0 && joinTime > timeout)
+				return;
 			while (matchesQueue.getHighest() > prefixQueue.peek().spx) {
 				// Add the result to the output
 				pb.progress(joinTime);
@@ -378,6 +385,8 @@ public class TopKJoin {
 		// Consume items from the priority queue of events
 		ProgressBar pb = new ProgressBar(k);
 		while (!prefixQueue.isEmpty() && numMatches != k) {
+			if (timeout > 0 && joinTime > timeout)
+				return;
 			while (matchesQueue.getHighest() > prefixQueue.peek().spx) {
 				// Add the result to the output
 				pb.progress(joinTime);
