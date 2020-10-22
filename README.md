@@ -33,7 +33,7 @@ $ mvn install
 
 ## Standalone execution
 
-To invoke SimSearch in standalone mode as a Java application, run the executable:
+To invoke SimJoin in standalone mode as a Java application, run the executable:
 ```sh
 $ java -jar target/simjoin-0.0.1-SNAPSHOT.jar --join <config_simjoin> --input <config_input> [OPTIONAL --query <config_query>]
 ```
@@ -43,7 +43,7 @@ or
 $ java -jar target/simjoin-0.0.1-SNAPSHOT.jar -j <config_simjoin> -i <config_input> [OPTIONAL -q <config_query>]
 ```
 
-## Launching SimSearch as web service
+## Launching SimJoin as web service
 
 SimJoin also integrates a REST API and can be deployed as a web service application at a specific port (e.g., 8090) as follows:
 ```sh
@@ -86,7 +86,7 @@ This docker image can then be used to launch a web service application at a spec
 $ docker run -p 8090:8080 sdl/simjoin-docker:latest --service
 ```
 
-Once the service is launched, requests can be sent as mentioned above in order to create, manage, and query instances of SimSearch against data source(s).
+Once the service is launched, requests can be sent as mentioned above in order to create, manage, and query instances of SimJoin against data source(s).
 
 ## License
 
