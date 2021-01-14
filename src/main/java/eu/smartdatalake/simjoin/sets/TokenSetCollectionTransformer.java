@@ -23,7 +23,7 @@ public class TokenSetCollectionTransformer {
 	 *            The input collection.
 	 * @return A dictionary containing the mappings from strings to integers.
 	 */
-	public TObjectIntMap<String> constructTokenDictionary(GroupCollection<String> collection) {
+	public static TObjectIntMap<String> constructTokenDictionary(GroupCollection<String> collection) {
 
 		// Sort tokens by frequency
 		TokenFrequencyPair[] tfs = calculateTokenFrequency(collection);
@@ -37,7 +37,7 @@ public class TokenSetCollectionTransformer {
 		return tokenDict;
 	}
 
-	private TokenFrequencyPair[] calculateTokenFrequency(GroupCollection<String> collection) {
+	private static TokenFrequencyPair[] calculateTokenFrequency(GroupCollection<String> collection) {
 
 		// Compute token frequencies
 		TObjectIntMap<String> tokenDict = new TObjectIntHashMap<String>();
@@ -76,7 +76,7 @@ public class TokenSetCollectionTransformer {
 	 *            The dictionary specifying the mappings.
 	 * @return The transformed collection.
 	 */
-	public IntSetCollection transformCollection(GroupCollection<String> collection,
+	public static IntSetCollection transformCollection(GroupCollection<String> collection,
 			TObjectIntMap<String> tokenDictionary) {
 
 		// Transform each original set
@@ -123,7 +123,7 @@ public class TokenSetCollectionTransformer {
 		return transformedCollection;
 	}
 
-	private class TokenFrequencyPair implements Comparable<TokenFrequencyPair> {
+	private static class TokenFrequencyPair implements Comparable<TokenFrequencyPair> {
 
 		private String token;
 		private int frequency;

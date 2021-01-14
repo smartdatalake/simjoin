@@ -6,9 +6,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import eu.smartdatalake.simjoin.sets.IntSetCollection;
 import eu.smartdatalake.simjoin.MatchingPair;
 import eu.smartdatalake.simjoin.fuzzysets.util.ProgressBar;
-import eu.smartdatalake.simjoin.sets.IntSetCollection;
 import gnu.trove.list.TDoubleList;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TDoubleArrayList;
@@ -23,11 +23,17 @@ import gnu.trove.set.hash.TIntHashSet;
 public class KNNJoin {
 	private static final Logger logger = LogManager.getLogger(KNNJoin.class);
 	private long timeout;
+	private int[][] idx;
+
+	public KNNJoin(long timeout, int[][] idx) {
+		this.timeout = timeout;
+		this.idx = idx;
+	}
 
 	public KNNJoin(long timeout) {
-		this.timeout = timeout;
+		this(timeout, null);
 	}
-	
+
 	/**
 	 * Implements kNN self-join.
 	 * 
@@ -48,12 +54,10 @@ public class KNNJoin {
 	 * @param collection1 The left collection.
 	 * @param collection2 The right collection.
 	 * @param k           The number of nearest neighbors to return for each group.
-	 * @param limitThreshold A threshold for neighbors to avoid low-scores.
 	 * @param results     The queue to which the results are added.
 	 */
 	public void join(IntSetCollection collection1, IntSetCollection collection2, int k, double limitThreshold,
 			ConcurrentLinkedQueue<MatchingPair> results) {
-
 		// Initializations
 		Verification verification = new Verification();
 		long numMatches = 0;
@@ -62,17 +66,25 @@ public class KNNJoin {
 		boolean selfJoin = (collection1 == collection2);
 
 		// Index initialization
-		TIntList[] idx = new TIntList[collection2.numTokens];
-		for (int i = 0; i < idx.length; i++) {
-			idx[i] = new TIntArrayList();
-		}
+		int[][] idx = this.idx;
+		if (idx == null) {
+			TIntList[] tmpIdx = new TIntList[collection2.numTokens];
+			for (int i = 0; i < tmpIdx.length; i++) {
+				tmpIdx[i] = new TIntArrayList();
+			}
 
-		// Index construction
-		for (int i = 0; i < collection2.sets.length; i++) {
-			// Since no threshold is known beforehand, index is constructed with
-			// all tokens (not prefixes)
-			for (int j = 0; j < collection2.sets[i].length; j++) {
-				idx[collection2.sets[i][j]].add(i);
+			// Index construction
+			for (int i = 0; i < collection2.sets.length; i++) {
+				// Since no threshold is known beforehand, index is constructed with
+				// all tokens (not prefixes)
+				for (int j = 0; j < collection2.sets[i].length; j++) {
+					tmpIdx[collection2.sets[i][j]].add(i);
+				}
+			}
+			// convert index to int[][]
+			idx = new int[collection2.numTokens][];
+			for (int i = 0; i < idx.length; i++) {
+				idx[i] = tmpIdx[i].toArray();
 			}
 		}
 
@@ -101,7 +113,7 @@ public class KNNJoin {
 			double weightedThreshold = 2.0 / (collection1.weights[count] + 1) * simThreshold;
 			eqoverlap = 1;
 			prefixBound = r.length;
-			
+
 			if (simThreshold > 0.0) {
 				if (weightedThreshold > 1.0)
 					break;
@@ -126,7 +138,6 @@ public class KNNJoin {
 					prefixBound = prefixLength[0];
 				}
 			}
-			
 
 			candidates = new TIntHashSet();
 			i = 0;
@@ -139,15 +150,15 @@ public class KNNJoin {
 
 			while (i < prefixBound && k_current > 0) {
 				// Skip this token if not in the index
-				if (r[i] < 0 || r[i] >= idx.length || idx[r[i]].size() == 0) {
+				if (r[i] < 0 || r[i] >= idx.length || idx[r[i]].length == 0) {
 					i++;
 					continue;
 				}
 
 				// Calculate differences in length against the indexed items to
 				// determine the search order
-				diff_front = r.length - collection2.sets[idx[r[i]].get(0)].length;
-				diff_rear = r.length - collection2.sets[idx[r[i]].get(idx[r[i]].size() - 1)].length;
+				diff_front = r.length - collection2.sets[idx[r[i]][0]].length;
+				diff_rear = r.length - collection2.sets[idx[r[i]][idx[r[i]].length - 1]].length;
 
 				TIntList consumeCands = new TIntArrayList();
 
@@ -155,10 +166,10 @@ public class KNNJoin {
 				if ((diff_front > 0) || (diff_rear < 0)) {
 					// Binary search
 					start = 0;
-					end = idx[r[i]].size() - 1;
+					end = idx[r[i]].length - 1;
 					while (start < end) {
 						pos = (int) Math.floor((start + end) / 2.0);
-						if (collection2.sets[idx[r[i]].get(start)].length < r.length) {
+						if (collection2.sets[idx[r[i]][start]].length < r.length) {
 							start = pos + 1; // search on the right part
 						} else {
 							end = pos - 1; // search on the left part
@@ -178,11 +189,11 @@ public class KNNJoin {
 
 					} else {
 						// Examine indexed items in descending order of length
-						j = idx[r[i]].size() - 1;
+						j = idx[r[i]].length - 1;
 						rightSide = false;
 					}
 				}
-				consumeCands.add(idx[r[i]].get(j));
+				consumeCands.add(idx[r[i]][j]);
 
 				int leftIt = j, rightIt = j;
 				while (!consumeCands.isEmpty()) {
@@ -195,15 +206,15 @@ public class KNNJoin {
 							if (leftIt < 0)
 								leftSide = false;
 							else {
-								consumeCands.add(idx[r[i]].get(leftIt));
+								consumeCands.add(idx[r[i]][leftIt]);
 							}
 						}
 						if (rightSide) {
 							rightIt++;
-							if (rightIt >= idx[r[i]].size()) {
+							if (rightIt >= idx[r[i]].length) {
 								rightSide = false;
 							} else {
-								consumeCands.add(idx[r[i]].get(rightIt));
+								consumeCands.add(idx[r[i]][rightIt]);
 							}
 						}
 					}
@@ -233,13 +244,12 @@ public class KNNJoin {
 						eqoverlap = minOverlap[sLen - tempMinLength];
 					}
 
-					
 					// Apply prefix filter
 					rPrefixLength = r.length - eqoverlap + 1;
 					if (rPrefixLength < i) {
 						continue;
 					}
-					
+
 					sPrefixLength = S.length - eqoverlap + 1;
 					found = false;
 					for (int m = 0; m < sPrefixLength; m++) {
@@ -259,7 +269,7 @@ public class KNNJoin {
 					}
 
 					candidates.add(candidate);
-					
+
 					// Verify candidate
 					sim = verification.verifyWithScore(r, S);
 					sim = (collection1.weights[count] + collection2.weights[candidate]) / 2.0 * sim;
@@ -291,8 +301,10 @@ public class KNNJoin {
 						// Adjust threshold
 						if (matches.size() >= k_current) {
 //							simThreshold = matchScores.get(matchScores.size() - 1);
-							simThreshold = matchScores.get(matchScores.size() - 1) > limitThreshold ? matchScores.get(matchScores.size() - 1) : limitThreshold ;
-							
+							simThreshold = matchScores.get(matchScores.size() - 1) > limitThreshold
+									? matchScores.get(matchScores.size() - 1)
+									: limitThreshold;
+
 							weightedThreshold = 2.0 / (collection1.weights[count] + 1) * simThreshold;
 							if (weightedThreshold > 1.0)
 								break;
@@ -339,7 +351,7 @@ public class KNNJoin {
 					}
 					break;
 				}
-				
+
 				// Check whether any results can be extracted
 				while (matchScores.size() > 0 && matchScores.get(0) >= spx) {
 					if (results != null)

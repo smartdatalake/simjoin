@@ -22,11 +22,17 @@ public class ThresholdJoin {
 	int weightedSets = 0, weightedCandidates = 0, totalCandidates = 0;
 	private static final Logger logger = LogManager.getLogger(ThresholdJoin.class);
 	private long timeout;
-	
-	public ThresholdJoin(long timeout) {
+	private int[][] idx;
+
+	public ThresholdJoin(long timeout, int[][] idx) {
 		this.timeout = timeout;
+		this.idx = idx;
 	}
-	
+
+	public ThresholdJoin(long timeout) {
+		this(timeout, null);
+	}
+
 	/**
 	 * Implements threshold-based self-join.
 	 * 
@@ -133,8 +139,8 @@ public class ThresholdJoin {
 							if (score >= threshold) {
 								// Add the result to the output
 								if (results != null)
-									results.add(
-										new MatchingPair(collection.keys[count], collection.keys[candidate], score));
+									results.add(new MatchingPair(collection.keys[count], collection.keys[candidate],
+											score));
 								numMatches++;
 							}
 						}
@@ -178,26 +184,29 @@ public class ThresholdJoin {
 		Verification verification = new Verification();
 		long numMatches = 0;
 
-		// Index construction
-		// create an empty inverted list for each token
-		TIntList[] tmpIdx = new TIntList[collection2.numTokens];
-		for (int i = 0; i < tmpIdx.length; i++) {
-			tmpIdx[i] = new TIntArrayList();
-		}
-		// iterate over the sets and populate the inverted lists
-		for (int i = 0; i < collection2.sets.length; i++) {
-			double weightedThresholdr = 2.0 / (collection2.weights[i] + 1) * threshold;
-			int prefixLength = collection2.sets[i].length
-					- (int) Math.ceil(collection2.sets[i].length * weightedThresholdr) + 1;
-
-			for (int j = 0; j < prefixLength; j++) {
-				tmpIdx[collection2.sets[i][j]].add(i);
+		int[][] idx = this.idx;
+		if (idx == null) {
+			// Index construction
+			// create an empty inverted list for each token
+			TIntList[] tmpIdx = new TIntList[collection2.numTokens];
+			for (int i = 0; i < tmpIdx.length; i++) {
+				tmpIdx[i] = new TIntArrayList();
 			}
-		}
-		// convert index to int[][]
-		int[][] idx = new int[collection2.numTokens][];
-		for (int i = 0; i < idx.length; i++) {
-			idx[i] = tmpIdx[i].toArray();
+			// iterate over the sets and populate the inverted lists
+			for (int i = 0; i < collection2.sets.length; i++) {
+				double weightedThresholdr = 2.0 / (collection2.weights[i] + 1) * threshold;
+				int prefixLength = collection2.sets[i].length
+						- (int) Math.ceil(collection2.sets[i].length * weightedThresholdr) + 1;
+
+				for (int j = 0; j < prefixLength; j++) {
+					tmpIdx[collection2.sets[i][j]].add(i);
+				}
+			}
+			// convert index to int[][]
+			idx = new int[collection2.numTokens][];
+			for (int i = 0; i < idx.length; i++) {
+				idx[i] = tmpIdx[i].toArray();
+			}
 		}
 
 		long joinTime = System.nanoTime();

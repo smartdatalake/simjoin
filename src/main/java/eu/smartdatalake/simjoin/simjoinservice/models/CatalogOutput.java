@@ -1,6 +1,5 @@
 package eu.smartdatalake.simjoin.simjoinservice.models;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import io.swagger.annotations.ApiModelProperty;

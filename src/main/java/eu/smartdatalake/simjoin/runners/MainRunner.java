@@ -9,7 +9,9 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import eu.smartdatalake.simjoin.data.DataCSVSource;
+import eu.smartdatalake.simjoin.data.DataESSource;
 import eu.smartdatalake.simjoin.data.DataJDBCSource;
+import eu.smartdatalake.simjoin.data.DataJSONSource;
 import eu.smartdatalake.simjoin.data.DataSource;
 
 import org.apache.logging.log4j.LogManager;
@@ -62,13 +64,17 @@ public class MainRunner {
 				if (configQuery != null) {
 					String mode = String.valueOf(configQuery.get("mode"));
 					String dataSource = String.valueOf(configQuery.get("dataSource"));
-					String queryFile = String.valueOf(configQuery.get("query_file"));
-					if (!queryFile.equals("null") && !queryFile.equals("")) {
-						if (dataSource.equals("csv"))
-							ds1 = new DataCSVSource(configQuery, mode);
-						else if (dataSource.equals("jdbc"))
-							ds1 = new DataJDBCSource(configQuery, mode);
-					}
+//					String queryFile = String.valueOf(configQuery.get("query_file"));
+//					if (!queryFile.equals("null") && !queryFile.equals("")) {
+					if (dataSource.equals("csv"))
+						ds1 = new DataCSVSource(configQuery, mode);
+					else if (dataSource.equals("jdbc"))
+						ds1 = new DataJDBCSource(configQuery, mode);
+					else if (dataSource.equals("es"))
+						ds1 = new DataESSource(configQuery, mode);
+					else if (dataSource.equals("json"))
+						ds1 = new DataJSONSource(configQuery, mode);
+//					}
 				}
 				String mode = String.valueOf(configInput.get("mode"));
 				String dataSource = String.valueOf(configInput.get("dataSource"));
@@ -77,6 +83,10 @@ public class MainRunner {
 					ds2 = new DataCSVSource(configInput, mode);
 				else if (dataSource.equals("jdbc"))
 					ds2 = new DataJDBCSource(configInput, mode);
+				else if (dataSource.equals("es"))
+					ds2 = new DataESSource(configInput, mode);
+				else if (dataSource.equals("json"))
+					ds2 = new DataJSONSource(configInput, mode);
 
 				if (mode.equalsIgnoreCase("standard") || mode.equalsIgnoreCase("fuzzy")) {
 					SimJoinRunner runner = new SimJoinRunner(ds1, ds2, configJoin, mode);

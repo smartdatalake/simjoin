@@ -1,10 +1,10 @@
 import requests
 import json
 from time import sleep
-from datasources import datasource1
+from datasources import ds_csv_1
               
 result = requests.post('http://localhost:8080/simjoin/api/addsource',
-                       data=json.dumps(datasource1),
+                       data=json.dumps(ds_csv_1),
                        headers={'Content-Type':'application/json',
                                 'accept': 'application/json'})
               
@@ -13,7 +13,7 @@ api_key = result.headers['id']
 ds_id = result.json()[0]['id']
 
 result = requests.post('http://localhost:8080/simjoin/api/addsource',
-                       data=json.dumps(datasource1),
+                       data=json.dumps(ds_csv_1),
                        headers={'Content-Type':'application/json',
                                 'accept': 'application/json'})
               

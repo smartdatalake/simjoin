@@ -41,22 +41,6 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 		this.results = results;
 	}
 	
-	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection, double threshold,
-			ConcurrentLinkedQueue<MatchingPair> results) {
-		this(type, collection, null, threshold, 0.0, results);
-	}
-
-	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection1,
-			GroupCollection<ArrayList<String>> collection2, double threshold,
-			ConcurrentLinkedQueue<MatchingPair> results) {
-		this(type, collection1, collection2, threshold, 0.0, results);
-	}
-	
-	public FuzzySetSimJoin(int type, GroupCollection<ArrayList<String>> collection, double threshold, double limitThreshold,
-			ConcurrentLinkedQueue<MatchingPair> results) {
-		this(type, collection, null, threshold, limitThreshold, results);
-	}
-	
 	public void thresholdJoin(GroupCollection<ArrayList<String>> collection, double threshold,
 			ConcurrentLinkedQueue<MatchingPair> results) {
 
@@ -157,9 +141,8 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 	private FuzzyIntSetCollection preprocess(GroupCollection<ArrayList<String>> collection) {
 
 		long duration = System.nanoTime();
-		FuzzySetCollectionTransformer transformer = new FuzzySetCollectionTransformer();
-		TObjectIntMap<String> tokenDictionary = transformer.constructTokenDictionary(collection);
-		FuzzyIntSetCollection transformedCollection = transformer.transformCollection(collection, tokenDictionary);
+		TObjectIntMap<String> tokenDictionary = FuzzySetCollectionTransformer.constructTokenDictionary(collection);
+		FuzzyIntSetCollection transformedCollection = FuzzySetCollectionTransformer.transformCollection(collection, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
 		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
@@ -172,10 +155,9 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 			GroupCollection<ArrayList<String>> collection2) {
 
 		long duration = System.nanoTime();
-		FuzzySetCollectionTransformer transformer = new FuzzySetCollectionTransformer();
-		TObjectIntMap<String> tokenDictionary = transformer.constructTokenDictionary(collection2);
-		FuzzyIntSetCollection transformedCollection2 = transformer.transformCollection(collection2, tokenDictionary);
-		FuzzyIntSetCollection transformedCollection1 = transformer.transformCollection(collection1, tokenDictionary);
+		TObjectIntMap<String> tokenDictionary = FuzzySetCollectionTransformer.constructTokenDictionary(collection2);
+		FuzzyIntSetCollection transformedCollection2 = FuzzySetCollectionTransformer.transformCollection(collection2, tokenDictionary);
+		FuzzyIntSetCollection transformedCollection1 = FuzzySetCollectionTransformer.transformCollection(collection1, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
 		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
@@ -189,22 +171,22 @@ public class FuzzySetSimJoin implements ISimJoin<ArrayList<String>>, Runnable {
 	public void run() {
 		switch (type) {
 		case TYPE_THRESHOLD:
-			if (collection2 == null) {
-				thresholdJoin(collection1, threshold, results);
+			if (collection1 == null) {
+				thresholdJoin(collection2, threshold, results);
 			} else {
 				thresholdJoin(collection1, collection2, threshold, results);
 			}
 			break;
 		case TYPE_KNN:
-			if (collection2 == null) {
-				knnJoin(collection1, (int) threshold, limitThreshold, results);
+			if (collection1 == null) {
+				knnJoin(collection2, (int) threshold, limitThreshold, results);
 			} else {
 				knnJoin(collection1, collection2, (int) threshold, limitThreshold, results);
 			}
 			break;
 		case TYPE_TOPK:
-			if (collection2 == null) {
-				topkJoin(collection1, (int) threshold, results);
+			if (collection1 == null) {
+				topkJoin(collection2, (int) threshold, results);
 			} else {
 				topkJoin(collection1, collection2, (int) threshold, results);
 			}

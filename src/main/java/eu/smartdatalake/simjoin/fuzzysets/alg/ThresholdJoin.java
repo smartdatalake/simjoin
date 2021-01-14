@@ -28,9 +28,15 @@ public class ThresholdJoin {
 			totalElements = 0, weightedSets = 0, weightedCandidates = 0;
 	private static final Logger logger = LogManager.getLogger(ThresholdJoin.class);
 	private long timeout;
+	private FuzzySetIndex idx;
+	
+	public ThresholdJoin(long timeout, FuzzySetIndex idx) {
+		this.timeout = timeout;
+		this.idx = idx;
+	}
 	
 	public ThresholdJoin(long timeout) {
-		this.timeout = timeout;
+		this(timeout, null);
 	}
 	
 
@@ -60,9 +66,13 @@ public class ThresholdJoin {
 		boolean self = collection1 == collection2;
 
 		/* CREATE INDEX */
-		indexingTime = System.nanoTime();
-		FuzzySetIndex idx = new FuzzySetIndex(collection2);
-		indexingTime = System.nanoTime() - indexingTime;
+		FuzzySetIndex idx = this.idx;
+		if (idx == null) {
+			indexingTime = System.nanoTime();
+			idx = new FuzzySetIndex(collection2);
+			indexingTime = System.nanoTime() - indexingTime;
+			System.out.println("Indexing Time: " + indexingTime / 1000000000.0 + " sec.");
+		}
 
 		/* EXECUTE THE JOIN ALGORITHM */
 		ProgressBar pb = new ProgressBar(collection1.sets.length);

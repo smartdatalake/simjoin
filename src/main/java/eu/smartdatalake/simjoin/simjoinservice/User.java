@@ -7,8 +7,6 @@ import java.util.Map;
 
 import eu.smartdatalake.simjoin.data.DataSource;
 import eu.smartdatalake.simjoin.simjoinservice.models.nested.ThreadLog;
-import gnu.trove.map.TLongObjectMap;
-import gnu.trove.map.hash.TLongObjectHashMap;
 
 public class User {
 	public String id;

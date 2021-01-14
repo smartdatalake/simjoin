@@ -24,7 +24,7 @@ public class FuzzySetCollectionTransformer {
 	 *            The input collection.
 	 * @return A dictionary containing the mappings from strings to integers.
 	 */
-	public TObjectIntMap<String> constructTokenDictionary(GroupCollection<ArrayList<String>> collection) {
+	public static TObjectIntMap<String> constructTokenDictionary(GroupCollection<ArrayList<String>> collection) {
 
 		// Sort tokens by frequency
 		TokenFrequencyPair[] tfs = calculateTokenFrequency(collection);
@@ -38,7 +38,7 @@ public class FuzzySetCollectionTransformer {
 		return tokenDict;
 	}
 
-	private TokenFrequencyPair[] calculateTokenFrequency(GroupCollection<ArrayList<String>> collection) {
+	private static TokenFrequencyPair[] calculateTokenFrequency(GroupCollection<ArrayList<String>> collection) {
 
 		// Compute token frequencies
 		TObjectIntMap<String> tokenDict = new TObjectIntHashMap<String>();
@@ -79,7 +79,7 @@ public class FuzzySetCollectionTransformer {
 	 *            The dictionary specifying the mappings.
 	 * @return The transformed collection.
 	 */
-	public FuzzyIntSetCollection transformCollection(GroupCollection<ArrayList<String>> collection,
+	public static FuzzyIntSetCollection transformCollection(GroupCollection<ArrayList<String>> collection,
 			TObjectIntMap<String> tokenDictionary) {
 
 		boolean existingDictionary = tokenDictionary.size() > 0 ? true : false;
@@ -128,7 +128,7 @@ public class FuzzySetCollectionTransformer {
 		return transformedCollection;
 	}
 
-	private class TokenFrequencyPair implements Comparable<TokenFrequencyPair> {
+	private static class TokenFrequencyPair implements Comparable<TokenFrequencyPair> {
 
 		private String token;
 		private int frequency;

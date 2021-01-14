@@ -30,12 +30,18 @@ public class KNNJoin extends ThresholdJoin {
 	private static final Logger logger = LogManager.getLogger(KNNJoin.class);
 	protected long initializingTime = 0, candidateTime = 0;
 	private long timeout;
+	private FuzzySetIndex idx;
 
-	public KNNJoin(long timeout) {
+	public KNNJoin(long timeout, FuzzySetIndex idx) {
 		super(-1);
 		this.timeout = timeout;
+		this.idx = idx;
 	}
-	
+
+	public KNNJoin(long timeout) {
+		this(timeout, null);
+	}
+
 	/**
 	 * Implements kNN self-join.
 	 * 
@@ -94,11 +100,14 @@ public class KNNJoin extends ThresholdJoin {
 				knnResults[Integer.parseInt(mp.leftID)].add(Integer.parseInt(mp.rightID));
 			}
 		}
-
-		indexingTime = System.nanoTime();
-		FuzzySetIndex idx = new FuzzySetIndex(collection2);
-		indexingTime = System.nanoTime() - indexingTime;
-		System.out.println("Indexing Time: " + indexingTime / 1000000000.0 + " sec.");
+		
+		FuzzySetIndex idx = this.idx;
+		if (idx == null) {
+			indexingTime = System.nanoTime();
+			idx = new FuzzySetIndex(collection2);
+			indexingTime = System.nanoTime() - indexingTime;
+			System.out.println("Indexing Time: " + indexingTime / 1000000000.0 + " sec.");
+		}
 
 		/* EXECUTE THE JOIN ALGORITHM */
 		joinTime = System.nanoTime();
@@ -175,7 +184,7 @@ public class KNNJoin extends ThresholdJoin {
 				for (int token : querySet.unflattenedSignature[ri].toArray()) {
 					if (token < 0)
 						continue;
-					
+
 					int startIndex = 0;
 					int endIndex = idx.lengths[token].size();
 					if (self)
@@ -196,7 +205,7 @@ public class KNNJoin extends ThresholdJoin {
 							continue;
 
 						cands.add(S);
-						
+
 					}
 				}
 			}
@@ -205,8 +214,8 @@ public class KNNJoin extends ThresholdJoin {
 				candidatePairs.add(new FuzzyKIntMatchingPair(i, c, R, collection2.sets[c], 1, collection1.weights[i],
 						collection2.weights[c]));
 			}
-			
-			totalCandidates+= cands.size();
+
+			totalCandidates += cands.size();
 			candidateTime += System.nanoTime() - startTime2;
 
 			startTime2 = System.nanoTime();

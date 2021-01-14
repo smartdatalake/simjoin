@@ -3,6 +3,7 @@ package eu.smartdatalake.simjoin.simjoinservice.models;
 import java.util.ArrayList;
 import java.util.List;
 
+import eu.smartdatalake.simjoin.simjoinservice.models.nested.ListPairs;
 import io.swagger.annotations.ApiModelProperty;
 
 public class StatusOutput {

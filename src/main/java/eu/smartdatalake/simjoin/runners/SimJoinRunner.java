@@ -13,7 +13,12 @@ import org.json.simple.JSONObject;
 import eu.smartdatalake.simjoin.GroupCollection;
 import eu.smartdatalake.simjoin.MatchingPair;
 import eu.smartdatalake.simjoin.data.DataSource;
+import eu.smartdatalake.simjoin.fuzzysets.FuzzyIntSetCollection;
 import eu.smartdatalake.simjoin.fuzzysets.FuzzySetSimJoin;
+import eu.smartdatalake.simjoin.fuzzysets.PreparedFuzzySetSimJoin;
+import eu.smartdatalake.simjoin.fuzzysets.util.FuzzySetIndex;
+import eu.smartdatalake.simjoin.sets.IntSetCollection;
+import eu.smartdatalake.simjoin.sets.PreparedSetSimJoin;
 import eu.smartdatalake.simjoin.sets.SetSimJoin;
 
 /**
@@ -28,7 +33,7 @@ public class SimJoinRunner extends Thread {
 	ConcurrentLinkedQueue<MatchingPair> results = null;
 	String outputFile;
 	long timeout;
-	
+
 	public SimJoinRunner(DataSource ds1, DataSource ds2, JSONObject configJoin, String mode, long timeout) {
 		this.timeout = timeout;
 		if (mode.equalsIgnoreCase("standard")) {
@@ -57,79 +62,58 @@ public class SimJoinRunner extends Thread {
 
 			long duration = System.nanoTime();
 
-			GroupCollection<String> collection1 = null;
-			if (ds1 != null) {
-				collection1 = ds1.getData(maxLines);
-			}
+			if (ds2.prepared == null) {
+				GroupCollection<String> collection1 = null;
+				if (ds1 != null) {
+					collection1 = ds1.getData(maxLines);
+				}
 
-			GroupCollection<String> collection2 = ds2.getData(maxLines);
+				GroupCollection<String> collection2 = ds2.getData(maxLines);
 
-			duration = System.nanoTime() - duration;
-			logger.info("Read time: " + duration / 1000000000.0 + " sec.");
+				duration = System.nanoTime() - duration;
+				logger.info("Read time: " + duration / 1000000000.0 + " sec.");
 
-			SetSimJoin ssjoin = null;
-
-			// THRESHOLD-JOIN
-			if (joinType.equalsIgnoreCase("threshold")) {
-
-				// specify the similarity threshold
+				SetSimJoin ssjoin = null;
 				double threshold = Double.parseDouble(String.valueOf(configJoin.get("threshold")));
-
-				// SELF-JOIN
-				if (collection1 == null) {
-					ssjoin = new SetSimJoin(SetSimJoin.TYPE_THRESHOLD, collection2, threshold, results);
-				}
-				// FOREIGN-JOIN
-				else {
-					ssjoin = new SetSimJoin(SetSimJoin.TYPE_THRESHOLD, collection1, collection2, threshold, results);
-				}
-			}
-			// KNN-JOIN
-			if (joinType.equalsIgnoreCase("knn")) {
-
-				// specify k
-				int k = Integer.parseInt(String.valueOf(configJoin.get("k")));
-				try {
-					double threshold = Double.parseDouble(String.valueOf(configJoin.get("threshold")));
-
-					if (collection1 == null) {
-						ssjoin = new SetSimJoin(SetSimJoin.TYPE_KNN, collection2, k, threshold, results);
-					}
-					// FOREIGN-JOIN
-					else {
-						ssjoin = new SetSimJoin(SetSimJoin.TYPE_KNN, collection1, collection2, k, threshold, results);
-					}
-				} catch (Exception e) {
-					// SELF-JOIN
-					if (collection1 == null) {
-						ssjoin = new SetSimJoin(SetSimJoin.TYPE_KNN, collection2, k, results);
-					}
-					// FOREIGN-JOIN
-					else {
-						ssjoin = new SetSimJoin(SetSimJoin.TYPE_KNN, collection1, collection2, k, results);
-					}
-				}
-
-			}
-			// TOPK-JOIN
-			if (joinType.equalsIgnoreCase("topk")) {
-
-				// specify k
 				int k = Integer.parseInt(String.valueOf(configJoin.get("k")));
 
-				// SELF-JOIN
-				if (collection1 == null) {
-					ssjoin = new SetSimJoin(SetSimJoin.TYPE_TOPK, collection2, k, results);
-				}
-				// FOREIGN-JOIN
-				else {
-					ssjoin = new SetSimJoin(SetSimJoin.TYPE_TOPK, collection1, collection2, k, results);
-				}
-			}
+				if (joinType.equalsIgnoreCase("threshold"))
+					ssjoin = new SetSimJoin(SetSimJoin.TYPE_THRESHOLD, collection1, collection2, threshold, 0.0,
+							results);
+				else if (joinType.equalsIgnoreCase("knn"))
+					ssjoin = new SetSimJoin(SetSimJoin.TYPE_KNN, collection1, collection2, k, threshold, results);
+				else if (joinType.equalsIgnoreCase("topk"))
+					ssjoin = new SetSimJoin(SetSimJoin.TYPE_TOPK, collection1, collection2, k, 0.0, results);
 
-			ssjoin.timeout = timeout;
-			simjoinThread = new Thread(ssjoin);
-			simjoinThread.setName("SimJoin");
+				ssjoin.timeout = timeout;
+				simjoinThread = new Thread(ssjoin);
+				simjoinThread.setName("SimJoin");
+			} else {
+				GroupCollection<String> collection1 = ds1.getData(maxLines);
+				duration = System.nanoTime() - duration;
+				logger.info("Read time: " + duration / 1000000000.0 + " sec.");
+
+				PreparedSetSimJoin ssjoin = null;
+				double threshold = Double.parseDouble(String.valueOf(configJoin.get("threshold")));
+				int k = Integer.parseInt(String.valueOf(configJoin.get("k")));
+
+				IntSetCollection collection2 = (IntSetCollection) ds2.prepared.getCollection();
+				int[][] idx = (int[][]) ds2.prepared.getIndex();
+
+				if (joinType.equalsIgnoreCase("threshold"))
+					ssjoin = new PreparedSetSimJoin(SetSimJoin.TYPE_THRESHOLD, collection1, collection2, threshold, 0.0,
+							results, ds2.prepared.getDictionary(), idx);
+				else if (joinType.equalsIgnoreCase("knn"))
+					ssjoin = new PreparedSetSimJoin(SetSimJoin.TYPE_KNN, collection1, collection2, k, threshold,
+							results, ds2.prepared.getDictionary(), idx);
+				else if (joinType.equalsIgnoreCase("topk"))
+					ssjoin = new PreparedSetSimJoin(SetSimJoin.TYPE_TOPK, collection1, collection2, k, 0.0, results,
+							ds2.prepared.getDictionary(), idx);
+
+				ssjoin.timeout = timeout;
+				simjoinThread = new Thread(ssjoin);
+				simjoinThread.setName("SimJoin");
+			}
 
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
@@ -152,81 +136,61 @@ public class SimJoinRunner extends Thread {
 			long duration = System.nanoTime();
 			simjoinThread = null;
 
-			GroupCollection<ArrayList<String>> collection1 = null;
-			if (ds1 != null) {
-				collection1 = ds1.getData(maxLines);
-			}
+			if (ds2.prepared == null) {
+				GroupCollection<ArrayList<String>> collection1 = null;
+				if (ds1 != null) {
+					collection1 = ds1.getData(maxLines);
+				}
 
-			GroupCollection<ArrayList<String>> collection2 = ds2.getData(maxLines);
+				GroupCollection<ArrayList<String>> collection2 = ds2.getData(maxLines);
 
-			duration = System.nanoTime() - duration;
-			logger.info("Read time: " + duration / 1000000000.0 + " sec.");
+				duration = System.nanoTime() - duration;
+				logger.info("Read time: " + duration / 1000000000.0 + " sec.");
 
-			FuzzySetSimJoin ssjoin = null;
-			// THRESHOLD-JOIN
-			if (joinType.equalsIgnoreCase("threshold")) {
-
-				// specify the similarity threshold
+				FuzzySetSimJoin ssjoin = null;
 				double threshold = Double.parseDouble(String.valueOf(configJoin.get("threshold")));
+				int k = Integer.parseInt(String.valueOf(configJoin.get("k")));
 
-				// SELF-JOIN
-				if (collection1 == null) {
-					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_THRESHOLD, collection2, threshold, results);
-				}
-				// FOREIGN-JOIN
-				else {
+				if (joinType.equalsIgnoreCase("threshold"))
 					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_THRESHOLD, collection1, collection2, threshold,
+							0.0, results);
+				else if (joinType.equalsIgnoreCase("knn"))
+					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection1, collection2, k, threshold,
 							results);
-				}
-			}
-			// KNN-JOIN
-			if (joinType.equalsIgnoreCase("knn")) {
+				else if (joinType.equalsIgnoreCase("topk"))
+					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_TOPK, collection1, collection2, k, 0.0, results);
 
-				// specify k
-				int k = Integer.parseInt(String.valueOf(configJoin.get("k")));
-				try {
-					double threshold = Double.parseDouble(String.valueOf(configJoin.get("threshold")));
-					// SELF-JOIN
-					if (collection1 == null) {
-						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection2, k, threshold, results);
-					}
-					// FOREIGN-JOIN
-					else {
-						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection1, collection2, k, threshold,
-								results);
-					}
-				} catch (Exception e) {
-					// SELF-JOIN
-					if (collection1 == null) {
-						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection2, k, results);
-					}
-					// FOREIGN-JOIN
-					else {
-						ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_KNN, collection1, collection2, k, results);
-					}
-				}
+				ssjoin.timeout = timeout;
 
-			}
-			// TOPK-JOIN
-			if (joinType.equalsIgnoreCase("topk")) {
+				simjoinThread = new Thread(ssjoin);
+				simjoinThread.setName("SimJoin");
+			} else {
+				GroupCollection<ArrayList<String>> collection1 = ds1.getData(maxLines);
+				duration = System.nanoTime() - duration;
+				logger.info("Read time: " + duration / 1000000000.0 + " sec.");
 
-				// specify k
+				PreparedFuzzySetSimJoin ssjoin = null;
+				double threshold = Double.parseDouble(String.valueOf(configJoin.get("threshold")));
 				int k = Integer.parseInt(String.valueOf(configJoin.get("k")));
 
-				// SELF-JOIN
-				if (collection1 == null) {
-					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_TOPK, collection2, k, results);
-				}
-				// FOREIGN-JOIN
-				else {
-					ssjoin = new FuzzySetSimJoin(FuzzySetSimJoin.TYPE_TOPK, collection1, collection2, k, results);
-				}
+				FuzzyIntSetCollection collection2 = (FuzzyIntSetCollection) ds2.prepared.getCollection();
+				FuzzySetIndex idx = (FuzzySetIndex) ds2.prepared.getIndex();
+
+				if (joinType.equalsIgnoreCase("threshold"))
+					ssjoin = new PreparedFuzzySetSimJoin(SetSimJoin.TYPE_THRESHOLD, collection1, collection2, threshold,
+							0.0, results, ds2.prepared.getDictionary(), idx);
+				else if (joinType.equalsIgnoreCase("knn"))
+					ssjoin = new PreparedFuzzySetSimJoin(SetSimJoin.TYPE_KNN, collection1, collection2, k, threshold,
+							results, ds2.prepared.getDictionary(), idx);
+				else if (joinType.equalsIgnoreCase("topk"))
+					ssjoin = new PreparedFuzzySetSimJoin(SetSimJoin.TYPE_TOPK, collection1, collection2, k, 0.0,
+							results, ds2.prepared.getDictionary(), idx);
+
+				ssjoin.timeout = timeout;
+				simjoinThread = new Thread(ssjoin);
+				simjoinThread.setName("SimJoin");
 			}
-			ssjoin.timeout = timeout;
-			
-			simjoinThread = new Thread(ssjoin);
-			simjoinThread.setName("SimJoin");
-			
+
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		}
@@ -235,7 +199,7 @@ public class SimJoinRunner extends Thread {
 	@Override
 	public void run() {
 		simjoinThread.start();
-		
+
 		long numMatches = 0;
 		try {
 			// OUTPUT RESULTS

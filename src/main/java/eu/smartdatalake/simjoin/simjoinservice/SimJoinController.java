@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import eu.smartdatalake.simjoin.data.DataCSVSource;
+import eu.smartdatalake.simjoin.data.DataESSource;
 import eu.smartdatalake.simjoin.data.DataJDBCSource;
+import eu.smartdatalake.simjoin.data.DataJSONSource;
 import eu.smartdatalake.simjoin.data.DataSource;
 import eu.smartdatalake.simjoin.runners.SimJoinRunner;
 import eu.smartdatalake.simjoin.simjoinservice.models.AddSourceInput;
@@ -56,7 +58,6 @@ public class SimJoinController {
 	@ApiOperation("Add a new DataSource")
 	public ResponseEntity<GeneralOutput[]> addSource(
 			@ApiParam("Input to addSource function") @RequestBody AddSourceInput[] inputs) {
-
 		String userID = String.format("USR_%d", System.currentTimeMillis());
 
 		users.put(userID, new User(userID));
@@ -65,22 +66,10 @@ public class SimJoinController {
 
 		GeneralOutput[] results = new GeneralOutput[inputs.length];
 
-		int i = 0;
-		for (AddSourceInput input : inputs) {
-
-			JSONObject config = input.toConfig();
-			DataSource ds = null;
-			if (input.type.equals("jdbc"))
-				ds = new DataJDBCSource(config, input.mode);
-			else if (input.type.equals("csv"))
-				ds = new DataCSVSource(config, input.mode);
-
+		for (int i=0; i< inputs.length; i++) {
 			String id = String.format("%d_%d", System.currentTimeMillis(), i);
-
-			u.addDataSource(id, input.name, ds);
-			String msg = String.format("DataSource %s was succesfully added with ID: %s", input.name, id);
+			String msg = addSource(inputs[i], id, u);
 			results[i] = new GeneralOutput(msg, id);
-			i++;
 		}
 
 		MultiValueMap<String, String> header = new LinkedMultiValueMap<String, String>();
@@ -102,24 +91,14 @@ public class SimJoinController {
 
 		GeneralOutput[] results = new GeneralOutput[inputs.length];
 
-		int i = 0;
-		for (AddSourceInput input : inputs) {
-			JSONObject config = input.toConfig();
-			DataSource ds = null;
-			if (input.type.equals("jdbc"))
-				ds = new DataJDBCSource(config, input.mode);
-			else if (input.type.equals("csv"))
-				ds = new DataCSVSource(config, input.mode);
-
+		for (int i=0; i< inputs.length; i++) {
 			String id = String.format("%d_%d", System.currentTimeMillis(), i);
-
-			u.addDataSource(id, input.name, ds);
-
-			String msg = String.format("DataSource %s was succesfully appended with ID: %s", input.name, id);
+			String msg = addSource(inputs[i], id, u);
 			results[i] = new GeneralOutput(msg, id);
-			i++;
 		}
-		return new ResponseEntity<GeneralOutput[]>(results, HttpStatus.OK);
+		MultiValueMap<String, String> header = new LinkedMultiValueMap<String, String>();
+		header.add("id", apiKey);
+		return new ResponseEntity<GeneralOutput[]>(results, header, HttpStatus.OK);
 	}
 
 	@RequestMapping(value = "/simjoin/api/removesource", method = RequestMethod.POST, consumes = "application/json", produces = "application/json")
@@ -233,10 +212,30 @@ public class SimJoinController {
 				result.pairs.add(line);
 			}
 			result.date = new Timestamp(tl.time).toString();
+			reader.close();
 		} catch (IOException e) {
 			return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
 		}
 
 		return new ResponseEntity<>(result, HttpStatus.OK);
+	}
+	
+	private String addSource(AddSourceInput input, String id, User u) {
+		JSONObject config = input.toConfig();
+		DataSource ds = null;
+		if (input.type.equals("jdbc"))
+			ds = new DataJDBCSource(config, input.mode);
+		else if (input.type.equals("csv"))
+			ds = new DataCSVSource(config, input.mode);
+		else if (input.type.equals("es"))
+			ds = new DataESSource(config, input.mode);
+		else if (input.type.equals("json"))
+			ds = new DataJSONSource(config, input.mode);
+		if (input.prepare != null) {
+			ds.prepare(input.prepare.max_lines, input.prepare.threshold);
+		}
+		u.addDataSource(id, input.name, ds);
+		String msg = String.format("DataSource %s was succesfully added with ID: %s", input.name, id);
+		return msg;
 	}
 }

@@ -15,6 +15,8 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.json.simple.JSONObject;
 
 import eu.smartdatalake.simjoin.GroupCollection;
+import eu.smartdatalake.simjoin.data.prepared.PreparedFuzzySet;
+import eu.smartdatalake.simjoin.data.prepared.PreparedStandardSet;
 import eu.smartdatalake.simjoin.fuzzysets.FuzzySetCollectionReader;
 import eu.smartdatalake.simjoin.sets.TokenSetCollectionReader;
 
@@ -33,6 +35,7 @@ public class DataJDBCSource extends DataSource {
 	 * 
 	 * @param config      The configuration of the input
 	 * @param mode        The mode of the input, i.e. Standard or Fuzzy
+	 * @return A {@link DataJDBCSource}.
 	 */
 	public DataJDBCSource(JSONObject config, String mode) {
 		super(config, mode, "jdbc");
@@ -173,5 +176,19 @@ public class DataJDBCSource extends DataSource {
 			return FuzzySetCollectionReader.fromJDBC(this, maxLines);
 		else
 			return TokenSetCollectionReader.fromJDBC(this, maxLines);
+	}
+	
+	/**
+	 * Prepares the {@link DataSource} by parsing, transforming and creating the index.
+	 * 
+	 * @param maxLines Number of lines to parse.
+	 * @param threshold Threshold for index (only in Standard ThresholdJoin
+	 */
+	public void prepare(int maxLines, double threshold) {
+		if (mode.equals("standard")) {
+			prepared = new PreparedStandardSet(TokenSetCollectionReader.fromJDBC(this, maxLines), threshold);	
+		} else if (mode.equals("fuzzy")) {
+			prepared = new PreparedFuzzySet(FuzzySetCollectionReader.fromJDBC(this, maxLines));
+		}
 	}
 }

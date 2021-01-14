@@ -39,21 +39,6 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 		this.results = results;
 	}
 
-	public SetSimJoin(int type, GroupCollection<String> collection, double threshold,
-			ConcurrentLinkedQueue<MatchingPair> results) {
-		this(type, collection, null, threshold, 0.0, results);
-	}
-
-	public SetSimJoin(int type, GroupCollection<String> collection1, GroupCollection<String> collection2,
-			double threshold, ConcurrentLinkedQueue<MatchingPair> results) {
-		this(type, collection1, collection2, threshold, 0.0, results);
-	}
-
-	public SetSimJoin(int type, GroupCollection<String> collection, double threshold, double limitThreshold,
-			ConcurrentLinkedQueue<MatchingPair> results) {
-		this(type, collection, null, threshold, limitThreshold, results);
-	}
-
 	public void thresholdJoin(GroupCollection<String> collection, double threshold,
 			ConcurrentLinkedQueue<MatchingPair> results) {
 
@@ -152,9 +137,8 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 	private IntSetCollection preprocess(GroupCollection<String> collection) {
 
 		long duration = System.nanoTime();
-		TokenSetCollectionTransformer transformer = new TokenSetCollectionTransformer();
-		TObjectIntMap<String> tokenDictionary = transformer.constructTokenDictionary(collection);
-		IntSetCollection transformedCollection = transformer.transformCollection(collection, tokenDictionary);
+		TObjectIntMap<String> tokenDictionary = TokenSetCollectionTransformer.constructTokenDictionary(collection);
+		IntSetCollection transformedCollection = TokenSetCollectionTransformer.transformCollection(collection, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
 		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
@@ -166,10 +150,9 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 	private IntSetCollection[] preprocess(GroupCollection<String> collection1, GroupCollection<String> collection2) {
 
 		long duration = System.nanoTime();
-		TokenSetCollectionTransformer transformer = new TokenSetCollectionTransformer();
-		TObjectIntMap<String> tokenDictionary = transformer.constructTokenDictionary(collection2);
-		IntSetCollection transformedCollection2 = transformer.transformCollection(collection2, tokenDictionary);
-		IntSetCollection transformedCollection1 = transformer.transformCollection(collection1, tokenDictionary);
+		TObjectIntMap<String> tokenDictionary = TokenSetCollectionTransformer.constructTokenDictionary(collection2);
+		IntSetCollection transformedCollection2 = TokenSetCollectionTransformer.transformCollection(collection2, tokenDictionary);
+		IntSetCollection transformedCollection1 = TokenSetCollectionTransformer.transformCollection(collection1, tokenDictionary);
 		duration = System.nanoTime() - duration;
 
 		logger.info("Transform time: " + duration / 1000000000.0 + " sec.");
@@ -182,22 +165,22 @@ public class SetSimJoin implements ISimJoin<String>, Runnable {
 	public void run() {
 		switch (type) {
 		case TYPE_THRESHOLD:
-			if (collection2 == null) {
-				thresholdJoin(collection1, threshold, results);
+			if (collection1 == null) {
+				thresholdJoin(collection2, threshold, results);
 			} else {
 				thresholdJoin(collection1, collection2, threshold, results);
 			}
 			break;
 		case TYPE_KNN:
-			if (collection2 == null) {
-				knnJoin(collection1, (int) threshold, limitThreshold, results);
+			if (collection1 == null) {
+				knnJoin(collection2, (int) threshold, limitThreshold, results);
 			} else {
 				knnJoin(collection1, collection2, (int) threshold, limitThreshold, results);
 			}
 			break;
 		case TYPE_TOPK:
-			if (collection2 == null) {
-				topkJoin(collection1, (int) threshold, results);
+			if (collection1 == null) {
+				topkJoin(collection2, (int) threshold, results);
 			} else {
 				topkJoin(collection1, collection2, (int) threshold, results);
 			}

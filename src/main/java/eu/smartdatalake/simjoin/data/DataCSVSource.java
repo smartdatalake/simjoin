@@ -3,6 +3,8 @@ package eu.smartdatalake.simjoin.data;
 import org.json.simple.JSONObject;
 
 import eu.smartdatalake.simjoin.GroupCollection;
+import eu.smartdatalake.simjoin.data.prepared.PreparedFuzzySet;
+import eu.smartdatalake.simjoin.data.prepared.PreparedStandardSet;
 import eu.smartdatalake.simjoin.fuzzysets.FuzzySetCollectionReader;
 import eu.smartdatalake.simjoin.sets.TokenSetCollectionReader;
 
@@ -52,5 +54,19 @@ public class DataCSVSource extends DataSource {
 			return FuzzySetCollectionReader.fromCSV(this, maxLines);
 		else
 			return TokenSetCollectionReader.fromCSV(this, maxLines);
+	}
+	
+	/**
+	 * Prepares the {@link DataSource} by parsing, transforming and creating the index.
+	 * 
+	 * @param maxLines Number of lines to parse.
+	 * @param threshold Threshold for index (only in Standard ThresholdJoin
+	 */
+	public void prepare(int maxLines, double threshold) {
+		if (mode.equals("standard")) {
+			prepared = new PreparedStandardSet(TokenSetCollectionReader.fromCSV(this, maxLines), threshold);	
+		} else if (mode.equals("fuzzy")) {
+			prepared = new PreparedFuzzySet(FuzzySetCollectionReader.fromCSV(this, maxLines));
+		}
 	}
 }
